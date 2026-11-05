@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Virtual Address Purchase Completed - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+            .button { display: block !important; width: auto !important; }
+            .details-card { padding: 16px !important; }
+            .price-box { margin-bottom: 12px !important; }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px; width:100%; background:#ffffff; border-radius:24px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background:#0070b6; padding:32px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}"
+                             src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png"
+                             alt="ALBION"
+                             width="160"
+                             style="display:block; margin:0 auto; height:auto; max-width:100%;"/>
+                    </td>
+                </tr>
+
+                <!-- Success Badge -->
+                <tr>
+                    <td style="padding:40px 32px 0 32px; text-align:center;">
+                        <div style="width:80px; height:80px; background:#e8f5e9; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px;">
+                            <span style="font-size:40px; color:#2e7d32;">🏢</span>
+                        </div>
+                        <h1 style="margin:0 0 12px 0; color:#1a2c3e; font-size:32px; font-weight:700;">Virtual Address Ready!</h1>
+                        <p style="margin:0; color:#5a6e8a; font-size:16px; line-height:1.5;">Your virtual business address has been activated</p>
+                    </td>
+                </tr>
+
+                <!-- Body Content -->
+                <tr>
+                    <td style="padding:0 32px 32px 32px;">
+
+                        <p style="margin:0 0 8px 0; color:#1a2c3e; font-size:16px; font-weight:600;">
+                            Hello <span th:text="${fullName}">Valued Buyer</span>,
+                        </p>
+
+                        <p style="margin:0 0 28px 0; color:#4a5b6e; font-size:15px; line-height:1.6;">
+                            Your virtual address purchase has been completed successfully. You can now use this address for your business correspondence.
+                        </p>
+
+                        <!-- Virtual Address Details Card -->
+                        <div class="details-card" style="background:#f8fafc; border-radius:16px; padding:8px; margin:8px 0 24px 0; border:1px solid #e2e8f0;">
+                            <div style="background:#ffffff; border-radius:12px; padding:20px;">
+                                <div style="border-left:3px solid #0070b6; padding-left:12px; margin-bottom:20px;">
+                                    <p style="margin:0; color:#1a2c3e; font-size:16px; font-weight:700;">Your Virtual Address</p>
+                                </div>
+
+                                <div style="margin-bottom:20px;">
+                                    <div style="display:flex; margin-bottom:12px;">
+                                        <div style="width:120px; color:#6b7f98; font-size:14px;">📍 Full Address:</div>
+                                        <div style="flex:1; color:#1a2c3e; font-size:14px; font-weight:500;" th:text="${fullAddress}">[Full Address]</div>
+                                    </div>
+                                    <div style="display:flex; margin-bottom:12px;">
+                                        <div style="width:120px; color:#6b7f98; font-size:14px;">🏢 Building Name:</div>
+                                        <div style="flex:1; color:#1a2c3e; font-size:14px;" th:text="${buildingName}">[Building Name]</div>
+                                    </div>
+                                    <div style="display:flex; margin-bottom:12px;">
+                                        <div style="width:120px; color:#6b7f98; font-size:14px;">🛣️ Street Name:</div>
+                                        <div style="flex:1; color:#1a2c3e; font-size:14px;" th:text="${streetName}">[Street Name]</div>
+                                    </div>
+                                    <div style="display:flex; margin-bottom:12px;">
+                                        <div style="width:120px; color:#6b7f98; font-size:14px;">🌆 City:</div>
+                                        <div style="flex:1; color:#1a2c3e; font-size:14px;" th:text="${city}">[City]</div>
+                                    </div>
+                                    <div style="display:flex;">
+                                        <div style="width:120px; color:#6b7f98; font-size:14px;">📮 Post Code:</div>
+                                        <div style="flex:1; color:#1a2c3e; font-size:14px;" th:text="${postCode}">[Post Code]</div>
+                                    </div>
+                                </div>
+
+                                <!-- Pricing Information -->
+                                <div style="background:#f0f9ff; border-radius:12px; padding:16px;">
+                                    <p style="margin:0 0 12px 0; color:#1a2c3e; font-size:14px; font-weight:600;">Pricing Plan:</p>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                        <span style="color:#4a5b6e; font-size:13px;">Payment Type:</span>
+                                        <span style="color:#1a2c3e; font-size:13px; font-weight:500;" th:text="${paymentType}">[Payment Type]</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                        <span style="color:#4a5b6e; font-size:13px;">Billing Frequency:</span>
+                                        <span style="color:#1a2c3e; font-size:13px; font-weight:500;" th:text="${billingFrequency}">[Billing Frequency]</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                        <span style="color:#4a5b6e; font-size:13px;">Monthly Price:</span>
+                                        <span style="color:#1a2c3e; font-size:13px; font-weight:500;">£<span th:text="${monthlyPrice}">[Monthly Price]</span></span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                        <span style="color:#4a5b6e; font-size:13px;">Yearly Price:</span>
+                                        <span style="color:#1a2c3e; font-size:13px; font-weight:500;">£<span th:text="${yearlyPrice}">[Yearly Price]</span></span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between;">
+                                        <span style="color:#4a5b6e; font-size:13px;">Grace Period:</span>
+                                        <span style="color:#1a2c3e; font-size:13px; font-weight:500;"><span th:text="${gracePeriodDays}">[Grace Period]</span> days</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CTA Button -->
+                        <div style="text-align:center; margin:28px 0 20px;">
+                            <a th:href="${portalLink}" href="#" class="button" style="display:inline-block; background:#0070b6; color:#ffffff; text-decoration:none; font-size:15px; font-weight:600; padding:14px 36px; border-radius:40px; box-shadow:0 2px 8px rgba(0,112,182,0.3);">
+                                Manage Virtual Address →
+                            </a>
+                        </div>
+
+                        <div style="border-top:1px solid #e9ecef; margin:32px 0 20px;"></div>
+
+                        <div style="text-align:center;">
+                            <p style="margin:0 0 4px 0; color:#4a5b6e; font-size:14px;">Best regards,</p>
+                            <p style="margin:0; color:#1a2c3e; font-size:15px; font-weight:700;">The <span th:text="${organizationName}">ALBION</span> Team</p>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:20px 32px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0 0 6px 0; font-size:12px; color:#8592a5;">
+                            Need help? Contact us at
+                            <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" href="#" style="color:#0070b6; text-decoration:underline;">support@albion.com</a>
+                        </p>
+                        <p style="margin:0; font-size:11px; color:#a0aec0;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>. All rights reserved.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

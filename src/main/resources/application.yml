@@ -1,0 +1,79 @@
+server:
+  port: ${PORT:8060}
+
+spring:
+  application:
+    name: echaris-api
+
+  config:
+    import: "optional:file:./env.properties"
+
+  web:
+    resources:
+      add-mappings: false
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:50MB}
+      max-request-size: ${MAX_REQUEST_SIZE:50MB}
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+  mail:
+    host: ${SMTP_HOST:${BREVO_SMTP_HOST}}
+    port: ${SMTP_PORT:${BREVO_SMTP_PORT}}
+    username: ${SMTP_USERNAME:${BREVO_SMTP_USERNAME}}
+    password: ${SMTP_PASSWORD:${BREVO_SMTP_KEY}}
+    protocol: smtp
+    default-encoding: UTF-8
+    test-connection: false
+    properties:
+      "[mail.smtp.auth]": ${SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${SMTP_STARTTLS:true}
+      "[mail.smtp.starttls.required]": ${SMTP_STARTTLS:true}
+      "[mail.smtp.ssl.enable]": false
+      "[mail.smtp.ssl.trust]": ${properties-mail-smtp-ssl-trust:${SMTP_HOST:${BREVO_SMTP_HOST}}}
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
+      "[mail.debug]": false
+
+app:
+  jwt-secret: ${JWT_SECRET}
+  api-key: ${API_KEY}
+  encryption-secret-key: ${ENCRYPTION_SECRET_KEY}
+
+  cloudinary-cloud: ${CLOUDINARY_CLOUD_NAME}
+  cloudinary-key: ${CLOUDINARY_API_KEY}
+  cloudinary-secret: ${CLOUDINARY_API_SECRET}
+
+  mail-from: ${MAIL_FROM}
+  mail-enabled: ${MAIL_ENABLED:false}
+
+ADMIN_BOOTSTRAP_EMAIL: ""
+ADMIN_BOOTSTRAP_PASSWORD: ""
+
+springdoc:
+  api-docs:
+    path: ${SPRINGDOC_API_DOCS_PATH:/api-docs}
+
+  swagger-ui:
+    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
+    display-request-duration: ${SPRINGDOC_DISPLAY_REQUEST_DURATION:true}
+    try-it-out-enabled: ${SPRINGDOC_TRY_IT_OUT_ENABLED:true}
+
+paystack:
+  base:
+    url: https://api.paystack.co
+
+  secret:
+    key: ${PAYSTACK_SECRET_KEY}
+
+  callback:
+    url: ${PAYSTACK_CALLBACK_URL}
+
+  webhook:
+    signing-secret: ${PAYSTACK_WEBHOOK_SIGNING_SECRET:}

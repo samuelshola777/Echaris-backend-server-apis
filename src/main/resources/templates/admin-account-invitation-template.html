@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Admin Account Invitation</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <!--[if mso]>
+    <style>
+        body, table, td, a, span { font-family: Arial, sans-serif !important; }
+    </style>
+    <![endif]-->
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:24px 12px;">
+
+            <!-- Card -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px; background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+                <!-- Header / Logo -->
+                <tr>
+                    <td style="background:#ffffff; padding:20px; text-align:center; border-bottom:1px solid #e6edf3;">
+                        <img th:src="${organizationLogo}" alt="" width="140" style="display:block; margin:0 auto; height:auto;"/>
+                    </td>
+                </tr>
+
+                <!-- Hero -->
+                <tr>
+                    <td align="center" style="background:#0070b6; padding:32px 24px;">
+                        <div style="width:72px; height:72px; border-radius:50%; background:#ffffff; display:inline-block; padding:8px; box-sizing:border-box; margin-bottom:16px;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3050/3050525.png" alt="" width="48" height="48" style="display:block; margin:0 auto;">
+                        </div>
+                        <h1 style="margin:0 0 8px 0; color:#ffffff; font-size:24px; font-weight:700;">Admin Account Invitation</h1>
+                        <p style="margin:0; color:#e6f3ff; font-size:14px;">Accept your invitation to get started</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:32px 28px;">
+                        <p style="margin:0 0 16px 0; color:#111827; font-size:15px;">
+                            Hello <strong th:text="${fullName}">Admin Name</strong>,
+                        </p>
+
+                        <p style="margin:0 0 16px 0; color:#374151; font-size:14px; line-height:1.6;">
+                            You have been invited to join <strong th:text="${organizationName}">ALBION</strong> as an administrator.
+                            Click the button below to accept your invitation and set up your account:
+                        </p>
+
+                        <!-- Accept Invitation Button -->
+                        <div style="text-align:center; margin:24px 0;">
+                            <a th:href="${verificationLink}" href="#" style="display:inline-block; background:#0070b6; color:#ffffff; text-decoration:none; font-size:15px; font-weight:600; padding:14px 32px; border-radius:6px; box-shadow:0 4px 8px rgba(0, 112, 182, 0.2);">
+                                Accept Invitation & Get Started
+                            </a>
+                        </div>
+
+                        <!-- Manual Link Section -->
+                        <div style="background:#f8fafc; border-radius:6px; padding:16px; margin:20px 0; border:1px solid #e5e7eb;">
+                            <p style="margin:0 0 12px 0; font-size:13px; color:#6b7280;">
+                                <strong>If the button doesn't work</strong>, copy and paste the link below into your browser:
+                            </p>
+                            <p style="margin:0; font-size:12px; word-break:break-all; background:#ffffff; padding:10px; border-radius:4px; border:1px dashed #d1d5db;">
+                                <a th:href="${verificationLink}" th:text="${verificationLink}" href="#" style="color:#0070b6; text-decoration:none;">[Verification Link]</a>
+                            </p>
+                        </div>
+
+                        <!-- Credentials Box -->
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f7fafc; border-radius:6px; padding:16px; margin:20px 0; border:1px solid #e5e7eb;">
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <strong style="color:#374151; font-size:13px;">Your Login Credentials:</strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <strong style="color:#374151; font-size:13px;">Email Address:</strong>
+                                    <p style="margin:4px 0 0 0; color:#111827; font-size:14px; font-family:monospace;">
+                                        <span th:text="${emailAddress}">admin@example.com</span>
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <strong style="color:#374151; font-size:13px;">Temporary Password:</strong>
+                                    <p style="margin:4px 0 0 0; color:#111827; font-size:14px; font-family:monospace; background:#ffffff; padding:8px; border-radius:4px; border:1px dashed #d1d5db;">
+                                        <span th:text="${password}">********</span>
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <strong style="color:#374151; font-size:13px;">Verification OTP:</strong>
+                                    <p style="margin:4px 0 0 0; color:#111827; font-size:14px; font-family:monospace; background:#ffffff; padding:8px; border-radius:4px; border:1px dashed #d1d5db;">
+                                        <span th:text="${otp}">123456</span>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Instructions -->
+                        <div style="background:#fff8e1; border-left:4px solid #ffb300; padding:12px 16px; margin:20px 0; border-radius:4px;">
+                            <p style="margin:0 0 8px 0; color:#374151; font-size:14px; font-weight:600;">
+                                <strong>Important Instructions:</strong>
+                            </p>
+                            <ul style="margin:0; padding-left:16px; color:#374151; font-size:13px; line-height:1.5;">
+                                <li>Click the "Accept Invitation" button above or use the manual link</li>
+                                <li>Enter the OTP when prompted during setup</li>
+                                <li>Change your password immediately after first login</li>
+                                <li>This invitation expires in 24 hours</li>
+                                <li>Do not share these credentials with anyone</li>
+                            </ul>
+                        </div>
+
+                        <!-- Divider -->
+                        <div style="border-top:1px solid #e5e7eb; margin:24px 0;"></div>
+
+                        <!-- Security Notice -->
+                        <p style="margin:0 0 16px 0; color:#374151; font-size:14px; line-height:1.6;">
+                            <strong>Security Notice:</strong> For security reasons, please:
+                        </p>
+                        <ol style="margin:0 0 20px 0; padding-left:16px; color:#374151; font-size:13px; line-height:1.6;">
+                            <li>Never share your login credentials</li>
+                            <li>Always log out when finished</li>
+                            <li>Enable two-factor authentication if available</li>
+                            <li>Report any suspicious activity immediately</li>
+                        </ol>
+
+                        <p style="margin:0 0 16px 0; color:#374151; font-size:14px; line-height:1.6;">
+                            If you did not request this invitation or have any questions, please contact our support team immediately.
+                        </p>
+
+                        <p style="margin:0 0 4px 0; color:#374151; font-size:14px;">
+                            Best regards,
+                        </p>
+                        <p style="margin:0; color:#111827; font-size:14px; font-weight:600;">
+                            The <span th:text="${organizationName}">ALBION</span> Team
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#f7fafc; padding:20px 18px; border-top:1px solid #e6edf3;">
+                        <p style="margin:0 0 8px 0; font-size:13px; color:#64748b;">
+                            Need help? Contact our support team at
+                            <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" href="#" style="color:#0b5d8a; text-decoration:underline;">support@example.com</a>
+                        </p>
+                        <p style="margin:0; font-size:12px; color:#94a3b8;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>. All rights reserved.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- /Card -->
+
+        </td>
+    </tr>
+</table>
+</body>
+</html>

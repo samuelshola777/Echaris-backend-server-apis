@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Albion Account Is Ready</title>
+</head>
+
+<body style="margin:0; padding:0; background:#f4f6f8; font-family:Arial, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding:32px 0;">
+    <tr>
+        <td align="center">
+
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:14px; overflow:hidden;">
+
+                <tr>
+                    <td style="background:#056b96; padding:32px; text-align:center;">
+                        <img th:if="${organizationLogo != null}"
+                             th:src="${organizationLogo}"
+                             alt="Albion"
+                             style="max-height:48px; margin-bottom:16px;" />
+
+                        <h2 style="margin:0; color:#ffffff; font-size:24px;">
+                            Your Albion Account Is Ready
+                        </h2>
+
+                        <p style="margin:10px 0 0; color:#d9edf7; font-size:14px; line-height:1.6;">
+                            Please log in and complete your profile setup.
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:36px; color:#333333;">
+
+                        <p style="font-size:16px; margin:0 0 20px;">
+                            Hello <strong th:text="${fullName}">User</strong>,
+                        </p>
+
+                        <p style="font-size:15px; line-height:1.8; color:#555555; margin:0 0 20px;">
+                            Welcome to <strong th:text="${organizationName}">Albion</strong>.
+                            Your account has been successfully created using your Google account.
+                        </p>
+
+                        <p style="font-size:15px; line-height:1.8; color:#555555; margin:0 0 24px;">
+                            Your email address has already been verified by Google, so there is no need to verify it again.
+                        </p>
+
+                        <div style="background:#f6fbfe; border-left:4px solid #056b96; padding:18px 20px; border-radius:8px; margin:28px 0;">
+                            <p style="margin:0 0 10px; color:#056b96; font-weight:700; font-size:15px;">
+                                Next step
+                            </p>
+
+                            <p style="margin:0; color:#555555; line-height:1.7; font-size:14px;">
+                                Please log in to your Albion account and complete your profile setup so we can provide access to the right services and features for your account.
+                            </p>
+                        </div>
+
+                        <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0; background:#fafafa; border-radius:10px; padding:18px;">
+                            <tr>
+                                <td style="font-size:14px; color:#333333; padding-bottom:12px;">
+                                    &#10003; Account created successfully
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="font-size:14px; color:#333333; padding-bottom:12px;">
+                                    &#10003; Email verified through Google
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="font-size:14px; color:#333333;">
+                                    &#9633; Profile setup still needs to be completed
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="font-size:15px; line-height:1.8; color:#555555; margin:0 0 20px;">
+                            To continue, please visit the Albion portal, log in with your Google account, and complete the remaining profile setup steps.
+                        </p>
+
+                        <p style="font-size:15px; line-height:1.8; color:#555555; margin:0;">
+                            Account type:
+                            <strong th:text="${userType}">USER</strong>
+                        </p>
+
+                        <p style="font-size:13px; line-height:1.7; color:#777777; margin:30px 0 0;">
+                            If you did not create this account, please contact our support team immediately at
+                            <a th:href="'mailto:' + ${supportEmail}"
+                               th:text="${supportEmail}"
+                               style="color:#056b96; text-decoration:none;">
+                                support@example.com
+                            </a>.
+                        </p>
+
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="background:#f7f7f7; padding:18px 32px; color:#888888; font-size:12px; text-align:center;">
+                        © <span th:text="${organizationName}">Albion</span>. All rights reserved.
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

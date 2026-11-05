@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Mail Forwarded Successfully - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+     <tr>
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px; width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background:#0070b6; padding:28px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}" src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png" alt="ALBION" width="140" style="display:block; margin:0 auto;"/>
+                        <div style="width:40px; height:2px; background:rgba(255,255,255,0.3); margin:16px auto 0; border-radius:2px;"></div>
+                    </td>
+                </tr>
+
+                <!-- Icon -->
+                <tr>
+                    <td style="padding:32px 32px 0 32px; text-align:center;">
+                        <div style="width:64px; height:64px; background:#e8f5e9; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">
+                            <span style="font-size:28px;">📫</span>
+                        </div>
+                        <h2 style="margin:16px 0 8px 0; color:#1a2c3e; font-size:24px; font-weight:700;">Mail Forwarded Successfully</h2>
+                        <p style="margin:0; color:#5a6e8a;">Your mail has been forwarded to the requested address</p>
+                    </td>
+                </td>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:24px 32px 32px;">
+                        <p style="margin:0 0 20px 0; color:#1a2c3e; font-size:15px; font-weight:500;">
+                            Hello <span th:text="${pointOfContactFullName}">Valued Customer</span>,
+                        </p>
+
+                        <p style="margin:0 0 24px 0; color:#4a5b6e; font-size:14px; line-height:1.6;">
+                            Your mail has been successfully forwarded to the address you requested. Below are the complete details of the forwarded mail.
+                        </p>
+
+                        <!-- Mail Information Card -->
+                        <div style="background:#ffffff; border-radius:16px; margin:0 0 20px 0; border:1px solid #e2e8f0; overflow:hidden;">
+                            
+                            <!-- Mail Information Section -->
+                            <div style="background:#f8fafc; padding:16px 20px; border-bottom:1px solid #e2e8f0;">
+                                <p style="margin:0; color:#1a2c3e; font-size:15px; font-weight:700;">📧 Mail Information</p>
+                            </div>
+                            <div style="padding:16px 20px; background:#ffffff;">
+                                <table style="width:100%; border-collapse:collapse;">
+                                    <tr style="border-bottom:1px solid #edf2f7;">
+                                        <td style="padding:10px 0; width:140px; color:#6b7f98; font-size:13px;">Sender Name</td>
+                                        <td style="padding:10px 0; color:#1a2c3e; font-size:14px; font-weight:500;" th:text="${senderName}">-</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #edf2f7;">
+                                        <td style="padding:10px 0; width:140px; color:#6b7f98; font-size:13px;">Recipient Name</td>
+                                        <td style="padding:10px 0; color:#1a2c3e; font-size:14px;" th:text="${recipientName}">-</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #edf2f7;">
+                                        <td style="padding:10px 0; width:140px; color:#6b7f98; font-size:13px;">Date Received</td>
+                                        <td style="padding:10px 0; color:#1a2c3e; font-size:14px;" th:text="${dateReceived}">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 0; width:140px; color:#6b7f98; font-size:13px;">Forwarded At</td>
+                                        <td style="padding:10px 0; color:#2e7d32; font-size:14px; font-weight:500;" th:text="${forwardedAt}">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Forwarded To Address Section -->
+                            <div style="background:#f8fafc; padding:16px 20px; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0;">
+                                <p style="margin:0; color:#1a2c3e; font-size:15px; font-weight:700;">📍 Forwarded To</p>
+                            </div>
+                            <div style="padding:16px 20px; background:#ffffff;">
+                                <table style="width:100%; border-collapse:collapse;">
+                                    <tr style="border-bottom:1px solid #edf2f7;">
+                                        <td style="padding:10px 0; width:140px; color:#6b7f98; font-size:13px;">Forwarding Address</td>
+                                        <td style="padding:10px 0; color:#1a2c3e; font-size:14px; font-weight:500;" th:text="${forwardAddress}">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 0; width:140px; color:#6b7f98; font-size:13px;">Contact Number</td>
+                                        <td style="padding:10px 0; color:#1a2c3e; font-size:14px;" th:text="${contactNumber}">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Status Section -->
+                            <div style="background:#e8f5e9; padding:14px 20px; border-top:1px solid #c8e6c9;">
+                                <p style="margin:0; color:#2e7d32; font-size:13px; text-align:center;">
+                                    ✓ Mail has been successfully forwarded on <span th:text="${forwardedAt}">-</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Note -->
+                        <div style="background:#fef9e3; border-radius:12px; padding:14px 16px; margin:20px 0;">
+                            <p style="margin:0; font-size:12px; color:#92400e; text-align:center;">
+                                💡 If you have any questions about this forwarding request, please contact our support team.
+                            </p>
+                        </div>
+
+                        <div style="border-top:1px solid #e9ecef; margin:28px 0 20px;"></div>
+
+                        <p style="margin:0; color:#4a5b6e; font-size:13px; text-align:center;">
+                            Best regards,<br>
+                            <strong style="color:#1a2c3e;">The <span th:text="${organizationName}">ALBION</span> Team</strong>
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:16px 24px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0; font-size:11px; color:#8592a5;">
+                            Questions? <a th:href="'mailto:' + ${supportEmail}" href="#" style="color:#0070b6; text-decoration:none;">Contact Support</a>
+                        </p>
+                        <p style="margin:8px 0 0 0; font-size:10px; color:#a0aec0;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>
+                        </p>
+                    </td>
+                </tr>
+            <tr>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${title}">KYC update</title>
+</head>
+
+<body style="margin:0;background:#f6f6f6;font-family:Arial,sans-serif;color:#222;">
+
+<table role="presentation" style="width:100%;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table
+                    role="presentation"
+                    style="width:100%;max-width:600px;background:white;border-radius:12px;padding:32px;"
+            >
+                <tr>
+                    <td>
+                        <p style="color:#ff5a00;font-size:24px;font-weight:bold;">
+                            Echaris
+                        </p>
+
+                        <h1 style="font-size:22px;" th:text="${title}">
+                            KYC update
+                        </h1>
+
+                        <p>
+                            Hello
+                            <span th:text="${name ?: 'there'}">there</span>,
+                        </p>
+
+                        <p th:text="${message}">
+                            Your identity document status has changed.
+                        </p>
+
+                        <p>
+                            <strong>Document type</strong>
+                            <br>
+                            <span th:text="${documentType}"></span>
+                        </p>
+
+                        <p>
+                            <strong>Customer reference</strong>
+                            <br>
+                            <span th:text="${customerId}"></span>
+                        </p>
+
+                        <div th:if="${reason != null and !#strings.isEmpty(reason)}">
+                            <p>
+                                <strong>Review reason</strong>
+                                <br>
+                                <span th:text="${reason}"></span>
+                            </p>
+                        </div>
+
+                        <p>
+                            Sign in to your Echaris account to view the details.
+                        </p>
+
+                        <p>The Echaris team</p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

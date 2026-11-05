@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  albion-portal-api:
+    build: .
+    container_name: albion-portal-api
+    restart: unless-stopped
+    expose:
+      - "8080"                # expose internal port ONLY to the Docker network
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Verify Your Email Address</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <!--[if mso]>
+    <style>
+        body, table, td, a, span { font-family: Arial, sans-serif !important; }
+    </style>
+    <![endif]-->
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:24px 12px;">
+
+            <!-- Card -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px; background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+                <!-- Header / Logo -->
+                <tr>
+                    <td style="background:#ffffff; padding:20px; text-align:center; border-bottom:1px solid #e6edf3;">
+                        <img th:src="${organizationLogo}" alt="" width="140" style="display:block; margin:0 auto; height:auto;"/>
+                    </td>
+                </tr>
+
+                <!-- Hero -->
+                <tr>
+                    <td align="center" style="background:#0070b6; padding:32px 24px;">
+                        <div style="width:72px; height:72px; border-radius:50%; background:#ffffff; display:inline-block; padding:8px; box-sizing:border-box; margin-bottom:16px;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/561/561127.png" alt="" width="48" height="48" style="display:block; margin:0 auto;">
+                        </div>
+                        <h1 style="margin:0 0 8px 0; color:#ffffff; font-size:24px; font-weight:700;">Verify Your Email</h1>
+                        <p style="margin:0; color:#e6f3ff; font-size:14px;">You're one step away from getting started</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:32px 28px;">
+                        <p style="margin:0 0 16px 0; color:#111827; font-size:15px;">
+                            Hi <strong th:text="${fullName ?: ''}">Nominee Director's Name</strong>,
+
+                        </p>
+
+                        <p style="margin:0 0 16px 0; color:#374151; font-size:14px; line-height:1.6;">
+                            Thanks for starting the sign-up process with <strong th:text="${organizationName}">ALBION</strong>!
+                            To get you set up, we just need to confirm that this email address belongs to you.
+                        </p>
+
+                        <p style="margin:0 0 20px 0; color:#374151; font-size:14px; line-height:1.6;">
+                            Please click the button below to verify your email:
+                        </p>
+
+                        <!-- CTA Button -->
+                        <div style="text-align:center; margin:24px 0;">
+                            <a th:href="${verificationLink}" href="#" style="display:inline-block; background:#0070b6; color:#ffffff; text-decoration:none; font-size:15px; font-weight:600; padding:14px 32px; border-radius:6px;">
+                                Verify Email
+                            </a>
+                        </div>
+
+                        <!-- Divider -->
+                        <div style="border-top:1px solid #e5e7eb; margin:24px 0;"></div>
+
+                        <!-- Alternative Link -->
+                        <p style="margin:0 0 8px 0; font-size:13px; color:#6b7280;">
+                            If you're having trouble, you can also copy and paste the following link into your browser:
+                        </p>
+                        <p style="margin:0 0 20px 0; font-size:12px; word-break:break-all;">
+                            <a th:href="${verificationLink}" th:text="${verificationLink}" href="#" style="color:#0070b6; text-decoration:underline;">[Verification Link]</a>
+                        </p>
+
+                        <p style="margin:0 0 16px 0; color:#374151; font-size:14px; line-height:1.6;">
+                            This is the first step on a great journey, and we're excited to have you with us.
+                        </p>
+
+                        <p style="margin:0 0 4px 0; color:#374151; font-size:14px;">
+                            Cheers,
+                        </p>
+                        <p style="margin:0; color:#111827; font-size:14px; font-weight:600;">
+                            The <span th:text="${organizationName}">ALBION</span> Team
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#f7fafc; padding:20px 18px; border-top:1px solid #e6edf3;">
+                        <p style="margin:0 0 8px 0; font-size:13px; color:#64748b;">
+                            Need help? Our support team is just one message away at
+                            <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" href="#" style="color:#0b5d8a; text-decoration:underline;">support@example.com</a>
+                        </p>
+                        <p style="margin:0; font-size:12px; color:#94a3b8;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>. All rights reserved.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- /Card -->
+
+        </td>
+    </tr>
+</table>
+</body>
+</html>

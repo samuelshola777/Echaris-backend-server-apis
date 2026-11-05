@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Purchase Completed - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+            .button { display: block !important; width: auto !important; }
+            .order-summary { padding: 16px !important; }
+            .summary-row { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px; width:100%; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background:#0070b6; padding:40px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}"
+                             src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png"
+                             alt="ALBION"
+                             width="180"
+                             style="display:block; margin:0 auto; height:auto; max-width:100%;"/>
+                        <div style="width:60px; height:3px; background:rgba(255,255,255,0.3); margin:20px auto 0; border-radius:2px;"></div>
+                    </td>
+                </tr>
+
+                <!-- Success Badge -->
+                <tr>
+                    <td style="padding:32px 32px 0 32px; text-align:center;">
+                        <div style="width:64px; height:64px; background:#e8f5e9; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                            <span style="font-size:32px;">✓</span>
+                        </div>
+                        <h1 style="margin:0 0 8px 0; color:#1a2c3e; font-size:28px; font-weight:700;">Thank You!</h1>
+                        <p style="margin:0; color:#5a6e8a; font-size:16px;">Your purchase has been completed successfully</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:24px 32px 32px 32px;">
+                        <p style="margin:0 0 24px 0; color:#374151; font-size:15px; line-height:1.6; text-align:center;">
+                            We've received your order and will begin processing it right away.
+                        </p>
+
+                        <!-- Order Summary Card -->
+                        <div style="background:#f8fafc; border-radius:12px; padding:8px; margin:24px 0; border:1px solid #e2e8f0;">
+                            <div style="background:#ffffff; border-radius:10px; padding:20px;">
+                                <div style="border-bottom:2px solid #0070b6; padding-bottom:12px; margin-bottom:16px; display:inline-block;">
+                                    <p style="margin:0; color:#1a2c3e; font-size:16px; font-weight:700;">Order Summary</p>
+                                </div>
+
+                                <div style="margin-bottom:16px;">
+                                    <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #edf2f7;">
+                                        <span style="color:#4a5b6e; font-size:14px;">🏢 Nominee Services</span>
+                                        <span style="color:#1a2c3e; font-size:14px; font-weight:600;" th:text="${nomineeCount}">0</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #edf2f7;">
+                                        <span style="color:#4a5b6e; font-size:14px;">📄 Shelf Companies</span>
+                                        <span style="color:#1a2c3e; font-size:14px; font-weight:600;" th:text="${numberOfCompanies}">0</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #edf2f7;">
+                                        <span style="color:#4a5b6e; font-size:14px;">📍 Virtual Addresses</span>
+                                        <span style="color:#1a2c3e; font-size:14px; font-weight:600;" th:text="${numberOfVirtualAddresses}">0</span>
+                                    </div>
+                                </div>
+
+                                <div style="background:#f0f9ff; border-radius:8px; padding:16px; margin-top:8px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                        <span style="color:#1a2c3e; font-size:14px; font-weight:600;">Subtotal</span>
+                                        <span style="color:#1a2c3e; font-size:14px; font-weight:600;">£<span th:text="${totalPrice}">0.00</span></span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                        <span style="color:#6b7f98; font-size:13px;">Tax (VAT)</span>
+                                        <span style="color:#6b7f98; font-size:13px;">£<span th:text="${tax}">0.00</span></span>
+                                    </div>
+                                    <div style="border-top:1px dashed #cbd5e1; margin:12px 0 8px 0;"></div>
+                                    <div style="display:flex; justify-content:space-between;">
+                                        <span style="color:#1a2c3e; font-size:16px; font-weight:700;">Total</span>
+                                        <span style="color:#0070b6; font-size:18px; font-weight:700;">£<span th:text="${totalPrice}">0.00</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Next Steps -->
+                        <div style="text-align:center; margin:28px 0 20px 0;">
+                            <p style="margin:0 0 16px 0; color:#4a5b6e; font-size:14px;">What happens next?</p>
+                            <div style="display:inline-flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+                                <span style="background:#e8f0fe; color:#0070b6; padding:4px 12px; border-radius:20px; font-size:12px;">📧 Confirmation email sent</span>
+                                <span style="background:#e8f0fe; color:#0070b6; padding:4px 12px; border-radius:20px; font-size:12px;">⏳ Processing 1-2 business days</span>
+                                <span style="background:#e8f0fe; color:#0070b6; padding:4px 12px; border-radius:20px; font-size:12px;">🎉 Access granted</span>
+                            </div>
+                        </div>
+
+                        <div style="border-top:1px solid #e9ecef; margin:32px 0 24px;"></div>
+
+                        <div style="text-align:center;">
+                            <p style="margin:0 0 4px 0; color:#4a5b6e; font-size:14px;">Best regards,</p>
+                            <p style="margin:0; color:#1a2c3e; font-size:16px; font-weight:700;">The <span th:text="${organizationName}">ALBION</span> Team</p>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:20px 32px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0; font-size:12px; color:#8592a5;">
+                            Need help? <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" href="#" style="color:#0070b6; text-decoration:underline;">Contact Support</a>
+                        </p>
+                        <p style="margin:8px 0 0 0; font-size:11px; color:#a0aec0;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>. All rights reserved.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

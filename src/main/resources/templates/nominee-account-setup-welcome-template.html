@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Account Review</title>
+    <!--[if mso]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+    <style type="text/css">
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Base styles */
+        body, table, td, a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Preheader */
+        .preheader {
+            display: none !important;
+            visibility: hidden;
+            mso-hide: all;
+            font-size: 1px;
+            line-height: 1px;
+            max-height: 0;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        /* Main styles */
+        .email-body {
+            background-color: #e9eef2;
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        .logo-wrap {
+            padding: 18px 16px;
+            background-color: #ffffff;
+            border-bottom: 4px solid #f1f5f8;
+            text-align: center;
+        }
+
+        .hero {
+            background-color: #0b6aa6;
+            text-align: center;
+            padding: 28px 20px;
+            color: #ffffff;
+        }
+
+        .hero-icon {
+            background-color: #ffffff;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: inline-block;
+            padding: 12px;
+            vertical-align: middle;
+        }
+
+        .content {
+            padding: 22px 28px 20px 28px;
+            color: #444444;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .panel {
+            padding: 14px;
+            border: 1px dashed #c7d3df;
+            border-radius: 6px;
+            background-color: #ffffff;
+            color: #222222;
+        }
+
+        .support-box {
+            padding: 12px;
+            border-radius: 6px;
+            background-color: #f8fbfe;
+            color: #444444;
+            font-size: 13px;
+            border: 1px solid #e6f3fb;
+        }
+
+        .footer {
+            background-color: #0b6aa6;
+            padding: 12px 16px;
+            text-align: center;
+            color: #ffffff;
+            font-size: 13px;
+        }
+
+        /* Mobile styles */
+        @media only screen and (max-width: 600px) {
+            .wrapper {
+                width: 100% !important;
+            }
+
+            .card {
+                border-radius: 0;
+            }
+
+            .logo-wrap {
+                padding: 12px 12px;
+            }
+
+            .hero {
+                padding: 22px 16px;
+            }
+
+            .hero h1 {
+                font-size: 18px !important;
+                margin: 12px 0 6px !important;
+            }
+
+            .content {
+                padding: 16px 16px 18px 16px !important;
+            }
+
+            .panel {
+                padding: 12px !important;
+            }
+
+            .support-box a {
+                word-break: break-word;
+            }
+        }
+
+        @media only screen and (max-width: 420px) {
+            .hero-icon {
+                width: 60px;
+                height: 60px;
+                padding: 10px;
+            }
+
+            .logo-img {
+                max-width: 120px;
+            }
+
+            .content {
+                font-size: 15px;
+                line-height: 1.5;
+            }
+
+            .support-box a {
+                display: block;
+                padding-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body class="email-body" style="margin: 0; padding: 0; background-color: #e9eef2; font-family: 'Segoe UI', Arial, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+
+<!-- Preheader -->
+<div class="preheader">
+    <span th:text="${preheader}">Your documents are being reviewed — we'll notify you when action is needed.</span>
+</div>
+
+<!-- Main content -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="wrapper" style="background-color: #e9eef2;">
+    <tr>
+        <td align="center" style="padding: 16px 12px;">
+            <!-- Card -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="card" style="max-width: 600px;">
+                <!-- Logo -->
+                <tr>
+                    <td class="logo-wrap" align="center" style="background-color: #ffffff; padding: 18px 16px; border-bottom: 4px solid #f1f5f8;">
+                        <img th:src="${organizationLogo}" th:alt="${organizationName} + ' logo'" width="140" class="logo-img" style="display: block; max-width: 140px; width: 100%; height: auto; border: 0;">
+                    </td>
+                </tr>
+
+                <!-- Hero -->
+                <tr>
+                    <td class="hero" align="center" style="background-color: #0b6aa6; padding: 28px 20px; color: #ffffff;">
+                        <div class="hero-icon" style="width: 72px; height: 72px; background-color: #ffffff; border-radius: 50%; display: inline-block; padding: 12px; vertical-align: middle;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/747/747376.png" alt="Document review status" width="48" style="display: block; border: 0; outline: none;">
+                        </div>
+                        <h1 style="margin: 16px 0 6px 0; font-size: 20px; line-height: 26px; color: #ffffff; font-weight: 700;">Account Review</h1>
+                        <p style="margin: 0; color: #e6f3fb; font-size: 14px;">Your submitted documents are under review</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td class="content" style="padding: 22px 28px 20px 28px; color: #444444; font-size: 14px; line-height: 1.6;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                                <td class="panel" style="padding: 14px; border: 1px dashed #c7d3df; border-radius: 6px; background-color: #ffffff; color: #222222;">
+                                    <p style="margin: 0 0 12px 0;">Hi <strong th:text="${fullName}">Nominee Director</strong>,</p>
+
+                                    <p style="margin: 0 0 12px 0;">
+                                        Thank you for verifying your account with <strong th:text="${organizationName}">ALBION</strong> 🎉.
+                                        Your details are now being carefully reviewed by our team. As part of the process you will soon receive a notification to complete a <strong>liveness check</strong>.
+                                    </p>
+
+                                    <p style="margin: 0 0 12px 0;">
+                                        This is an important security step to confirm your identity and activate full access to your account. No action is needed from you right now — we will let you know as soon as it's time to proceed.
+                                    </p>
+
+                                    <p style="margin: 12px 0 0 0;">
+                                        If you have any questions, our support team is ready to assist.
+                                    </p>
+
+                                    <p style="margin: 14px 0 0 0; color: #222222; font-weight: 700;">Best regards,<br>The <span th:text="${organizationName}">ALBION</span> Team</p>
+                                </td>
+                            </tr>
+
+                            <!-- Spacer -->
+                            <tr><td style="height: 16px; line-height: 16px;">&nbsp;</td></tr>
+
+                            <!-- Support box -->
+                            <tr>
+                                <td class="support-box" style="padding: 12px; border-radius: 6px; background-color: #f8fbfe; color: #444444; font-size: 13px; border: 1px solid #e6f3fb;">
+                                    Need help? Our support team is just one message away:
+                                    <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}"
+                                       style="color: #0b6aa6; text-decoration: underline; word-break: break-word;">support@albion.com</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td class="footer" align="center" style="background-color: #0b6aa6; padding: 12px 16px; color: #ffffff;">
+                        <p style="margin: 0; font-size: 13px;">&copy; <span th:text="${year}">2024</span> <span th:text="${organizationName}">ALBION</span>. All rights reserved.</p>
+                    </td>
+                </tr>
+            </table>
+            <!-- /Card -->
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

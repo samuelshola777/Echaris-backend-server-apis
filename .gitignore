@@ -1,0 +1,65 @@
+# Build output
+target/
+out/
+build/
+.gradle/
+
+# Local credentials and environment files
+env.properties
+.env
+.env.*
+!.env.example
+!.env.template
+
+# AI workspace files
+.ai/
+
+# IDE settings
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+
+# Java compiled files
+*.class
+
+# Logs and crash reports
+*.log
+logs/
+hs_err_pid*
+replay_pid*
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Keep build wrapper files
+!mvnw
+!mvnw.cmd
+!.mvn/wrapper/maven-wrapper.jar
+!gradlew
+!gradlew.bat
+!gradle/wrapper/gradle-wrapper.jar
+/env.properties
+
+env.properties
+.env
+.env.*
+!.env.example
+/target/
+/.ai/
+/.idea/
+/.vscode/

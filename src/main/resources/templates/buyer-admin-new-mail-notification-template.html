@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>New Mail Received - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+     <tr>
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px; width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background:#0070b6; padding:28px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}" src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png" alt="ALBION" width="140" style="display:block; margin:0 auto;"/>
+                        <div style="width:40px; height:2px; background:rgba(255,255,255,0.3); margin:16px auto 0; border-radius:2px;"></div>
+                    </td>
+                </tr>
+
+                <!-- Icon -->
+                <tr>
+                    <td style="padding:32px 32px 0 32px; text-align:center;">
+                        <div style="width:64px; height:64px; background:#e8f0fe; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">
+                            <span style="font-size:28px;">📬</span>
+                        </div>
+                        <h2 style="margin:16px 0 8px 0; color:#1a2c3e; font-size:24px; font-weight:700;">New Mail Received</h2>
+                        <p style="margin:0; color:#5a6e8a;">You have received new mail at your virtual address</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:24px 32px 32px;">
+                        <p style="margin:0 0 20px 0; color:#1a2c3e; font-size:15px; font-weight:500;">
+                            Hello <span th:text="${buyerFullName}">Valued Buyer</span>,
+                        </p>
+
+                        <p style="margin:0 0 24px 0; color:#4a5b6e; font-size:14px; line-height:1.6;">
+                            New mail has been received at your virtual address. Below are the details:
+                        </p>
+
+                        <!-- Mail Details Card -->
+                        <div style="background:#f8fafc; border-radius:16px; padding:20px; margin:0 0 20px 0; border:1px solid #e2e8f0;">
+                            <div style="border-left:3px solid #0070b6; padding-left:12px; margin-bottom:16px;">
+                                <p style="margin:0; color:#1a2c3e; font-size:14px; font-weight:600;">Mail Details</p>
+                            </div>
+                            
+                            <div style="margin-bottom:12px;">
+                                <p style="margin:0 0 4px 0; color:#6b7f98; font-size:12px;">Date Received</p>
+                                <p style="margin:0; color:#1a2c3e; font-size:14px; font-weight:500;" th:text="${dateReceived}">-</p>
+                            </div>
+                            
+                            <div style="margin-bottom:12px;">
+                                <p style="margin:0 0 4px 0; color:#6b7f98; font-size:12px;">Virtual Address</p>
+                                <p style="margin:0; color:#1a2c3e; font-size:14px;" th:text="${address}">-</p>
+                            </div>
+                            
+                            <div style="margin-bottom:12px;">
+                                <p style="margin:0 0 4px 0; color:#6b7f98; font-size:12px;">Sender</p>
+                                <p style="margin:0; color:#1a2c3e; font-size:14px; font-weight:500;" th:text="${senderName}">-</p>
+                            </div>
+                            
+                            <div style="margin-bottom:12px;">
+                                <p style="margin:0 0 4px 0; color:#6b7f98; font-size:12px;">Recipient</p>
+                                <p style="margin:0; color:#1a2c3e; font-size:14px;" th:text="${recipientName}">-</p>
+                            </div>
+                            
+                            <div>
+                                <p style="margin:0 0 4px 0; color:#6b7f98; font-size:12px;">Note</p>
+                                <p style="margin:0; color:#4a5b6e; font-size:14px; line-height:1.5;" th:text="${note}">-</p>
+                            </div>
+                        </div>
+
+                        <!-- View Mail Button -->
+                        <div style="text-align:center; margin:24px 0;">
+                            <a th:href="${scannedMailIdUrl}" href="#" class="button" style="display:inline-block; background:#0070b6; color:#ffffff; text-decoration:none; font-size:14px; font-weight:600; padding:12px 28px; border-radius:40px;">
+                                View Scanned Mail
+                            </a>
+                        </div>
+
+                        <div style="border-top:1px solid #e9ecef; margin:28px 0 20px;"></div>
+
+                        <p style="margin:0; color:#4a5b6e; font-size:13px; text-align:center;">
+                            Best regards,<br>
+                            <strong style="color:#1a2c3e;">The <span th:text="${organizationName}">ALBION</span> Team</strong>
+                        </p>
+                    </table>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:16px 24px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0; font-size:11px; color:#8592a5;">
+                            Questions? <a th:href="'mailto:' + ${supportEmail}" href="#" style="color:#0070b6; text-decoration:none;">Contact Support</a>
+                        </p>
+                        <p style="margin:8px 0 0 0; font-size:10px; color:#a0aec0;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

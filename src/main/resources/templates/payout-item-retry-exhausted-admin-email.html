@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nominee Payout Failed After Maximum Retries</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, sans-serif; color:#222;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding:24px 0;">
+    <tr>
+        <td align="center">
+
+            <table width="640" cellpadding="0" cellspacing="0"
+                   style="background-color:#ffffff; border-radius:8px; overflow:hidden; border:1px solid #e5e7eb;">
+
+                <tr>
+                    <td style="padding:24px; background-color:#111827; color:#ffffff;">
+                        <h2 style="margin:0; font-size:22px;">
+                            Nominee Payout Failed After Maximum Retries
+                        </h2>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:24px;">
+                        <p style="font-size:15px; line-height:1.6; margin-top:0;">
+                            Hello Admin,
+                        </p>
+
+                        <p style="font-size:15px; line-height:1.6;">
+                            A nominee payout has failed after reaching the maximum retry count.
+                            Please review the payout item, Wise recipient setup, nominee bank details,
+                            and Wise transfer logs.
+                        </p>
+
+                        <h3 style="margin-top:24px; font-size:18px; color:#111827;">
+                            Payout Details
+                        </h3>
+
+                        <table width="100%" cellpadding="8" cellspacing="0"
+                               style="border-collapse:collapse; font-size:14px; border:1px solid #e5e7eb;">
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Payout Item ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${payoutItemId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Run ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${runId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Batch ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${batchId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Nominee ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${nomineeId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Amount</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${amount}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Status</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${status}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Retry Count</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${retryCount}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Wise Recipient ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${wiseRecipientId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Wise Quote ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${wiseQuoteId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Wise Transfer ID</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${wiseTransferId}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Failure Reason</strong></td>
+                                <td style="border:1px solid #e5e7eb; color:#b91c1c;" th:text="${failureReason}">N/A</td>
+                            </tr>
+
+                            <tr>
+                                <td style="border:1px solid #e5e7eb;"><strong>Generated At</strong></td>
+                                <td style="border:1px solid #e5e7eb;" th:text="${generatedAt}">N/A</td>
+                            </tr>
+
+                        </table>
+
+                        <p style="font-size:15px; line-height:1.6; margin-top:24px;">
+                            Action required: please investigate this payout manually before attempting another payment.
+                        </p>
+
+                        <p style="font-size:15px; line-height:1.6;">
+                            Regards,<br/>
+                            Albion System
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Albion Support Ticket</title>
+</head>
+
+<body style="margin:0; padding:0; background:#f4f7fb; font-family:Arial, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb; padding:40px 0;">
+    <tr>
+        <td align="center">
+
+            <table width="650" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:16px; overflow:hidden;">
+
+                <tr>
+                    <td align="center" style="background:#056b96; padding:38px 30px;">
+                        <img th:if="${organizationLogo != null}"
+                             th:src="${organizationLogo}"
+                             alt="Albion"
+                             style="height:58px; margin-bottom:18px;" />
+
+                        <h1 style="margin:0; color:#ffffff; font-size:26px; font-weight:700;"
+                            th:text="${title}">
+                            Ticket Notification
+                        </h1>
+
+                        <p style="margin:10px 0 0; color:#d8eef8; font-size:14px;">
+                            Albion Support Centre
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:38px 40px;">
+
+                        <p style="font-size:16px; color:#1f2937; margin:0 0 18px;">
+                            Hello <strong th:text="${fullName}">Customer</strong>,
+                        </p>
+
+                        <p style="font-size:15px; line-height:1.8; color:#4b5563; margin:0 0 28px;"
+                           th:text="${message}">
+                            Your support ticket has been updated.
+                        </p>
+
+                        <table width="100%" cellpadding="0" cellspacing="0"
+                               style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;">
+                            <tr>
+                                <td style="padding:24px;">
+
+                                    <table width="100%" cellpadding="0" cellspacing="0">
+
+                                        <tr>
+                                            <td style="padding:10px 0; color:#6b7280; font-size:13px; width:170px;">
+                                                Ticket Number
+                                            </td>
+                                            <td style="padding:10px 0; color:#111827; font-weight:700;"
+                                                th:text="${ticketNumber}">
+                                                TKT-2026-001
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:10px 0; color:#6b7280; font-size:13px;">
+                                                Subject
+                                            </td>
+                                            <td style="padding:10px 0; color:#111827;"
+                                                th:text="${subject}">
+                                                Ticket Subject
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:10px 0; color:#6b7280; font-size:13px;">
+                                                Category
+                                            </td>
+                                            <td style="padding:10px 0; color:#111827;"
+                                                th:text="${category}">
+                                                General Support
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:10px 0; color:#6b7280; font-size:13px;">
+                                                Priority
+                                            </td>
+                                            <td style="padding:10px 0; color:#111827;"
+                                                th:text="${priority}">
+                                                Normal
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:10px 0; color:#6b7280; font-size:13px;">
+                                                Status
+                                            </td>
+                                            <td style="padding:10px 0;">
+                                                <span style="background:#e8f4fd; color:#056b96; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:700;"
+                                                      th:text="${status}">
+                                                    OPEN
+                                                </span>
+                                            </td>
+                                        </tr>
+
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin:30px 0 0; font-size:14px; line-height:1.8; color:#4b5563;">
+                            Please log in to your Albion portal to view the full ticket conversation
+                            or provide any additional information requested by the support team.
+                        </p>
+
+                        <p style="margin:18px 0 0; font-size:14px; line-height:1.8; color:#4b5563;">
+                            Need help? Contact us at
+                            <a th:href="'mailto:' + ${supportEmail}"
+                               th:text="${supportEmail}"
+                               style="color:#056b96; text-decoration:none; font-weight:600;">
+                                support@albion.com
+                            </a>.
+                        </p>
+
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="background:#f9fafb; padding:24px 30px; text-align:center; border-top:1px solid #e5e7eb;">
+                        <p style="margin:0; color:#6b7280; font-size:13px;">
+                            © <span th:text="${organizationName}">Albion</span>. All rights reserved.
+                        </p>
+
+                        <p style="margin:8px 0 0; color:#9ca3af; font-size:12px;">
+                            This is an automated support notification.
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

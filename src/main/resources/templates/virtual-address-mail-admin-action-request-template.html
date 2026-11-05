@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Mail Action Request - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+        }
+    </style>
+</head>
+
+<body style="margin:0; padding:0; background:#f0f2f5; font-family:'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520"
+                   class="container"
+                   style="max-width:520px; width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+
+                <tr>
+                    <td style="background:#0070b6; padding:32px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}"
+                             src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png"
+                             alt="ALBION"
+                             width="150"
+                             style="display:block; margin:0 auto;" />
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:32px 32px 0 32px; text-align:center;">
+                        <div style="width:72px; height:72px; background:#eff6ff; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; border:1px solid #bfdbfe;">
+                            <span style="font-size:32px;">📬</span>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:24px 32px 32px;">
+                        <h2 style="margin:0 0 12px 0; color:#1a2c3e; font-size:26px; font-weight:700; text-align:center;">
+                            Mail Action Request
+                        </h2>
+
+                        <p style="margin:0 0 28px 0; color:#6b7f98; text-align:center; font-size:15px;">
+                            A buyer has submitted a virtual address mail action request.
+                        </p>
+
+                        <div style="margin-bottom:20px;">
+                            <p style="margin:0 0 12px 0; color:#1a2c3e; font-size:14px; font-weight:600;">
+                                Request Information
+                            </p>
+
+                            <div style="background:#f8fafc; border-radius:12px; padding:16px;">
+                                <div style="display:flex; margin-bottom:12px;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Action:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px; font-weight:600;" th:text="${action}">Mail Holding</div>
+                                </div>
+
+                                <div style="display:flex; margin-bottom:12px;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Mail ID:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px;" th:text="${notification.id}">-</div>
+                                </div>
+
+                                <div style="display:flex; margin-bottom:12px;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Buyer ID:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px;" th:text="${notification.buyerUserId}">-</div>
+                                </div>
+
+                                <div style="display:flex;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Address ID:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px;" th:text="${notification.virtualAddressId}">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom:20px;">
+                            <p style="margin:0 0 12px 0; color:#1a2c3e; font-size:14px; font-weight:600;">
+                                Mail Details
+                            </p>
+
+                            <div style="background:#f0f9ff; border-radius:12px; padding:16px; border-left:3px solid #0070b6;">
+                                <div style="display:flex; margin-bottom:12px;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Sender:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px; font-weight:500;" th:text="${notification.senderName}">-</div>
+                                </div>
+
+                                <div style="display:flex; margin-bottom:12px;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Recipient:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px; font-weight:500;" th:text="${notification.recipientName}">-</div>
+                                </div>
+
+                                <div style="display:flex; margin-bottom:12px;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Date Received:</div>
+                                    <div style="flex:1; color:#1a2c3e; font-size:13px;" th:text="${notification.dateReceived}">-</div>
+                                </div>
+
+                                <div style="display:flex;">
+                                    <div style="width:120px; color:#6b7f98; font-size:13px;">Address:</div>
+                                    <div style="flex:1; color:#4a5b6e; font-size:13px; line-height:1.5;" th:text="${notification.address}">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background:#fff7ed; border-radius:12px; padding:16px; margin:24px 0;">
+                            <p style="margin:0; font-size:13px; color:#9a3412; text-align:center;" th:text="${message}">
+                                Please login to the Albion Admin Portal to process this request.
+                            </p>
+                        </div>
+
+                        <div style="border-top:1px solid #e9ecef; margin:28px 0 20px;"></div>
+
+                        <p style="margin:0; color:#4a5b6e; font-size:13px; text-align:center;">
+                            Best regards,<br>
+                            <strong style="color:#1a2c3e;">The <span th:text="${organizationName}">ALBION</span> Team</strong>
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:16px 24px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0; font-size:11px; color:#8592a5;">
+                            Questions?
+                            <a th:href="'mailto:' + ${supportEmail}" href="#" style="color:#0070b6; text-decoration:none;">
+                                Contact Support
+                            </a>
+                        </p>
+                        <p style="margin:8px 0 0 0; font-size:10px; color:#a0aec0;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

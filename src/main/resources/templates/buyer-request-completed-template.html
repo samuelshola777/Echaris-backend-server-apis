@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Request Completed - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px; width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background:#0070b6; padding:28px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}" src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png" alt="ALBION" width="140" style="display:block; margin:0 auto;"/>
+                        <div style="width:40px; height:2px; background:rgba(255,255,255,0.3); margin:16px auto 0; border-radius:2px;"></div>
+                    </td>
+                </tr>
+
+                <!-- Icon -->
+                <tr>
+                    <td style="padding:32px 32px 0 32px; text-align:center;">
+                        <div style="width:64px; height:64px; background:#e8f5e9; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">
+                            <span style="font-size:32px;">✓</span>
+                        </div>
+                        <h2 style="margin:16px 0 8px 0; color:#1a2c3e; font-size:24px; font-weight:700;">Request Completed</h2>
+                        <p style="margin:0; color:#5a6e8a;">Your request has been completed and approved</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:24px 32px 32px;">
+                        <p style="margin:0 0 24px 0; color:#4a5b6e; font-size:14px; line-height:1.6;">
+                            Your request has been successfully completed. Below are the details:
+                        </p>
+
+                        <!-- Text Fields Section -->
+                        <div th:if="${textFields != null and !textFields.isEmpty()}" style="margin-bottom:24px;">
+                            <p style="margin:0 0 12px 0; color:#1a2c3e; font-size:14px; font-weight:600;">Request Details:</p>
+                            <div style="background:#f8fafc; border-radius:12px; padding:16px;">
+                                <div th:each="field : ${textFields}" style="margin-bottom:12px;">
+                                    <p style="margin:0 0 4px 0; color:#6b7f98; font-size:12px;" th:text="${field.title}">Title</p>
+                                    <p style="margin:0; color:#1a2c3e; font-size:14px; font-weight:500;" th:text="${field.value}">Value</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Attachments Section -->
+                        <div th:if="${attachments != null and !attachments.isEmpty()}" style="margin-bottom:24px;">
+                            <p style="margin:0 0 12px 0; color:#1a2c3e; font-size:14px; font-weight:600;">Documents:</p>
+                            <div style="background:#f8fafc; border-radius:12px; padding:16px;">
+                                <div th:each="attachment : ${attachments}" style="margin-bottom:12px;">
+                                    <a th:href="${attachment.value}" href="#" style="color:#0070b6; text-decoration:none; display:inline-block;" th:text="${attachment.attachmentName}">Document Name</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="border-top:1px solid #e9ecef; margin:28px 0 20px;"></div>
+
+                        <p style="margin:0; color:#4a5b6e; font-size:13px; text-align:center;">
+                            Best regards,<br>
+                            <strong style="color:#1a2c3e;">The <span th:text="${organizationName}">ALBION</span> Team</strong>
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:16px 24px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0; font-size:11px; color:#8592a5;">
+                            Questions? <a th:href="'mailto:' + ${supportEmail}" href="#" style="color:#0070b6; text-decoration:none;">Contact Support</a>
+                        </p>
+                        <p style="margin:8px 0 0 0; font-size:10px; color:#a0aec0;">
+                            &copy; <span th:text="${year}">2025</span> <span th:text="${organizationName}">ALBION</span>
+                        </p>
+                    </td>
+                </tr>
+    </tr>
+    </td>
+    </tr>
+</table>
+</body>
+</html>

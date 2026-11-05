@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Payout Run Ready - ALBION</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0; padding:0; background:#f0f2f5; font-family:'Segoe UI', Arial, sans-serif;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f2f5;">
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="520" style="max-width:520px; width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+
+                <tr>
+                    <td style="background:#0070b6; padding:28px 24px; text-align:center;">
+                        <img th:src="${organizationLogo}" alt="ALBION" width="140" style="display:block; margin:0 auto;"/>
+                        <div style="width:40px; height:2px; background:rgba(255,255,255,0.3); margin:16px auto 0; border-radius:2px;"></div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:32px 32px 0; text-align:center;">
+                        <div style="width:64px; height:64px; background:#e8f0fe; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">
+                            <span style="font-size:28px;">💷</span>
+                        </div>
+                        <h2 style="margin:16px 0 8px; color:#1a2c3e; font-size:24px; font-weight:700;">Payout Run Ready</h2>
+                        <p style="margin:0; color:#5a6e8a;">A payout run has been prepared and is ready for review.</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:24px 32px 32px;">
+                        <div style="background:#f8fafc; border-radius:16px; padding:20px; border:1px solid #e2e8f0;">
+                            <div style="border-left:3px solid #0070b6; padding-left:12px; margin-bottom:16px;">
+                                <p style="margin:0; color:#1a2c3e; font-size:14px; font-weight:600;">Payout Summary</p>
+                            </div>
+
+                            <p><strong>Run ID:</strong> <span th:text="${runId}">-</span></p>
+                            <p><strong>Status:</strong> <span th:text="${status}">-</span></p>
+                            <p><strong>Payout Date:</strong> <span th:text="${payoutDate}">-</span></p>
+                            <p><strong>Preparation Date:</strong> <span th:text="${preparationDate}">-</span></p>
+                            <p><strong>Expected Amount:</strong> <span th:text="${currency}">GBP</span> <span th:text="${expectedAmount}">0.00</span></p>
+                            <p><strong>Available Balance:</strong> <span th:text="${currency}">GBP</span> <span th:text="${availableBalance}">0.00</span></p>
+                            <p><strong>Shortfall:</strong> <span th:text="${currency}">GBP</span> <span th:text="${shortfall}">0.00</span></p>
+                            <p><strong>Total Nominees:</strong> <span th:text="${totalNominees}">0</span></p>
+                            <p><strong>Total Batches:</strong> <span th:text="${totalBatches}">0</span></p>
+                        </div>
+
+                        <p style="margin:24px 0 0; color:#4a5b6e; font-size:14px; line-height:1.6;">
+                            Please log in to the admin portal to review this payout run before processing.
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td align="center" style="background:#fafbfc; padding:16px 24px; border-top:1px solid #eef2f6;">
+                        <p style="margin:0; font-size:11px; color:#8592a5;">Questions? <a th:href="'mailto:' + ${supportEmail}" style="color:#0070b6; text-decoration:none;">Contact Support</a></p>
+                        <p style="margin:8px 0 0; font-size:10px; color:#a0aec0;">&copy; <span th:text="${year}">2026</span> <span th:text="${organizationName}">ALBION</span></p>
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

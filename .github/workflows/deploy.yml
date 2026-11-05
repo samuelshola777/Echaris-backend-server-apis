@@ -1,0 +1,42 @@
+name: Deploy albion-portal-api to server
+
+on:
+  push:
+    branches:
+      - development    # workflow triggers when development is updated (can change later)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (for reference)
+        uses: actions/checkout@v4
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          command_timeout: 900s
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            BRANCH="${{ secrets.DEPLOY_BRANCH }}"
+            echo "Using branch $BRANCH"
+
+            git fetch origin "$BRANCH"
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
+
+            echo "Building Docker image(s)..."
+            docker compose build
+
+            echo "Starting containers..."
+            docker compose up -d
+
+            echo "Cleaning up old images..."
+            docker image prune -f

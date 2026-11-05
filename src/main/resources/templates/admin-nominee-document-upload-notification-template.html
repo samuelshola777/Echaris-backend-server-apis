@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Document Upload Notification</title>
+    <!--[if mso]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+    <style type="text/css">
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Base styles */
+        body, table, td, a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Preheader */
+        .preheader {
+            display: none !important;
+            visibility: hidden;
+            mso-hide: all;
+            font-size: 1px;
+            line-height: 1px;
+            max-height: 0;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        /* Main styles */
+        .email-body {
+            background-color: #e9eef2;
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        .logo-container {
+            background-color: #ffffff;
+            padding: 24px 32px 16px;
+            text-align: center;
+        }
+
+        .logo {
+            max-width: 160px;
+            height: auto;
+            display: inline-block;
+        }
+
+        .hero {
+            background-color: #0088cc;
+            text-align: center;
+            padding: 28px 20px;
+            color: #ffffff;
+        }
+
+        .hero-icon {
+            background-color: #ffffff;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: inline-block;
+            padding: 12px;
+            vertical-align: middle;
+        }
+
+        .content {
+            padding: 22px 28px 20px 28px;
+            color: #444444;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .panel {
+            padding: 14px;
+            border: 1px dashed #c7d3df;
+            border-radius: 6px;
+            background-color: #ffffff;
+            color: #222222;
+        }
+
+        .info-box {
+            background-color: #f8fbfe;
+            border-left: 4px solid #0088cc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .detail-item {
+            display: flex;
+            margin: 12px 0;
+            padding: 8px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            width: 120px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .detail-value {
+            flex: 1;
+            color: #111827;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .support-box {
+            padding: 12px;
+            border-radius: 6px;
+            background-color: #f8fbfe;
+            color: #444444;
+            font-size: 13px;
+            border: 1px solid #e6f3fb;
+        }
+
+        .footer {
+            background-color: #0088cc;
+            padding: 12px 16px;
+            text-align: center;
+            color: #ffffff;
+            font-size: 13px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e6e6e6;
+            margin: 20px 0;
+        }
+
+        /* Mobile styles */
+        @media only screen and (max-width: 600px) {
+            .wrapper {
+                width: 100% !important;
+            }
+
+            .card {
+                border-radius: 0;
+            }
+
+            .logo-container {
+                padding: 20px 20px 12px;
+            }
+
+            .hero {
+                padding: 22px 16px;
+            }
+
+            .hero h1 {
+                font-size: 18px !important;
+                margin: 12px 0 6px !important;
+            }
+
+            .content {
+                padding: 16px 16px 18px 16px !important;
+            }
+
+            .panel {
+                padding: 12px !important;
+            }
+
+            .detail-item {
+                flex-direction: column;
+            }
+
+            .detail-label {
+                width: 100%;
+                margin-bottom: 4px;
+            }
+
+            .support-box a {
+                word-break: break-word;
+            }
+        }
+
+        @media only screen and (max-width: 420px) {
+            .hero-icon {
+                width: 60px;
+                height: 60px;
+                padding: 10px;
+            }
+
+            .logo {
+                max-width: 120px;
+            }
+
+            .content {
+                font-size: 15px;
+                line-height: 1.5;
+            }
+
+            .support-box a {
+                display: block;
+                padding-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body class="email-body" style="margin: 0; padding: 0; background-color: #e9eef2; font-family: 'Segoe UI', Arial, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+
+<!-- Preheader -->
+<div class="preheader">
+    <span th:text="${preheader}">A nominee has uploaded a document requiring verification</span>
+</div>
+
+<!-- Main content -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="wrapper" style="background-color: #e9eef2;">
+    <tr>
+        <td align="center" style="padding: 16px 12px;">
+            <!-- Card -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="card" style="max-width: 600px;">
+
+                <!-- ALBION Logo - Prominently placed at top -->
+                <tr>
+                    <td class="logo-container" align="center">
+                        <img src="https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png"
+                             th:src="${organizationLogo != null ? organizationLogo : 'https://res.cloudinary.com/dl870gulo/image/upload/v1759977628/image_919_ykvspj.png'}"
+                             th:alt="${organizationName ?: 'ALBION BUSINESSFORMATION'}"
+                             class="logo"
+                             style="display: block; max-width: 160px; width: 100%; height: auto; margin: 0 auto;">
+                    </td>
+                </tr>
+
+                <!-- Hero -->
+                <tr>
+                    <td class="hero" align="center" style="background-color: #0088cc; padding: 28px 20px; color: #ffffff;">
+                        <div class="hero-icon" style="width: 72px; height: 72px; background-color: #ffffff; border-radius: 50%; display: inline-block; padding: 12px; vertical-align: middle;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Document upload" width="48" style="display: block; border: 0; outline: none;">
+                        </div>
+                        <h1 style="margin: 16px 0 6px 0; font-size: 20px; line-height: 26px; color: #ffffff; font-weight: 700;">Document Uploaded</h1>
+                        <p style="margin: 0; color: #e6f3fb; font-size: 14px;">Verification Required</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td class="content" style="padding: 22px 28px 20px 28px; color: #444444; font-size: 14px; line-height: 1.6;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                                <td class="panel" style="padding: 14px; border: 1px dashed #c7d3df; border-radius: 6px; background-color: #ffffff; color: #222222;">
+                                    <p style="margin: 0 0 12px 0;">Hello,</p>
+
+                                    <p style="margin: 0 0 12px 0;">
+                                        A nominee has uploaded a new document through the
+                                        <span th:text="${organizationName ?: 'ALBION'}">ALBION</span> platform that requires verification.
+                                    </p>
+
+                                    <!-- Info Box -->
+                                    <div class="info-box" style="background-color: #f8fbfe; border-left: 4px solid #0088cc; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                                        <div style="text-align: center; margin-bottom: 16px;">
+                                            <span class="status-badge" style="display: inline-block; background: #fef3c7; color: #92400e; padding: 6px 16px; border-radius: 30px; font-weight: 600; font-size: 13px;">⏳ PENDING VERIFICATION</span>
+                                        </div>
+
+                                        <div class="detail-item" style="display: flex; margin: 12px 0; padding: 8px 0; border-bottom: 1px dashed #e2e8f0;">
+                                            <span class="detail-label" style="width: 120px; font-weight: 600; color: #374151;">Nominee:</span>
+                                            <span class="detail-value" style="flex: 1; color: #111827;" th:text="${fullName}">John Doe</span>
+                                        </div>
+
+                                        <div class="detail-item" style="display: flex; margin: 12px 0; padding: 8px 0; border-bottom: 1px dashed #e2e8f0;">
+                                            <span class="detail-label" style="width: 120px; font-weight: 600; color: #374151;">Document Type:</span>
+                                            <span class="detail-value" style="flex: 1; color: #111827;" th:text="${documentType}">PASSPORT</span>
+                                        </div>
+
+                                        <div class="detail-item" style="display: flex; margin: 12px 0; padding: 8px 0;">
+                                            <span class="detail-label" style="width: 120px; font-weight: 600; color: #374151;">Status:</span>
+                                            <span class="detail-value" style="flex: 1; color: #111827;">Pending Verification</span>
+                                        </div>
+                                    </div>
+
+                                    <p style="margin: 16px 0 0 0;">
+                                        Please log in to the admin dashboard to review and verify this document.
+                                    </p>
+
+                                    <hr style="border: none; border-top: 1px solid #e6e6e6; margin: 20px 0;">
+
+                                    <div class="footer-message" style="margin: 0 0 16px 0; font-size: 13px; color: #6b7280;">
+                                        <p style="margin: 0;">This is an automated notification from <span th:text="${organizationName ?: 'ALBION'}">ALBION</span>. No action is required if the document has already been processed.</p>
+                                    </div>
+
+                                    <p style="margin: 0;">
+                                        Best regards,<br>
+                                        The <span th:text="${organizationName ?: 'ALBION'}">ALBION</span> Team
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- Spacer -->
+                            <tr><td style="height: 16px; line-height: 16px;">&nbsp;</td></tr>
+
+                            <!-- Support box -->
+                            <tr>
+                                <td class="support-box" style="padding: 12px; border-radius: 6px; background-color: #f8fbfe; color: #444444; font-size: 13px; border: 1px solid #e6f3fb;">
+                                    <strong style="display: block; margin-bottom: 4px;">Need assistance?</strong>
+                                    Contact support:
+                                    <a th:href="'mailto:' + (${supportEmail} ?: 'support@albion.com')"
+                                       th:text="${supportEmail ?: 'support@albion.com'}"
+                                       style="color: #0088cc; text-decoration: underline; word-break: break-word;">support@albion.com</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td class="footer" align="center" style="background-color: #0088cc; padding: 12px 16px; color: #ffffff;">
+                        <p style="margin: 0; font-size: 13px;">&copy; <span th:text="${year ?: '2026'}">2026</span> <span th:text="${organizationName ?: 'ALBION BUSINESSFORMATION'}">ALBION BUSINESSFORMATION</span>. All rights reserved.</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">This is an automated notification</p>
+                    </td>
+                </tr>
+            </table>
+            <!-- /Card -->
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
