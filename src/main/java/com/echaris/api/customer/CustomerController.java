@@ -108,15 +108,15 @@ public class CustomerController {
         );
     }
 
-    @GetMapping("/private/platform-access")
-    public ResponseEntity<ApiResponse<CustomerResponse>> checkPlatformAccess(
+    @GetMapping("/private/account-access")
+    public ResponseEntity<ApiResponse<CustomerResponse>> checkAccountAccess(
             @RequestAttribute("validatedProfile")
             CustomerResponse profile
     ) {
         return ResponseEntity.ok(
                 new ApiResponse<>(
                         true,
-                        "Platform access verified",
+                        "Account access verified",
                         profile
                 )
         );

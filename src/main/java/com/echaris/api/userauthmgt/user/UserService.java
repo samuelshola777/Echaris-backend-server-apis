@@ -52,11 +52,11 @@ public class UserService {
 	/**
 	 * Updates the provided user's information in the database.
 	 *
-	 * @param existingUser the user entity to be updated (must already exist in the
-	 *                     database)
+	 * @param existingUser the user entity to be updated
 	 */
 	public User updateUser(User existingUser) {
 		existingUser.setUpdatedAt(LocalDateTime.now());
+
 		existingUser.setAge(
 				existingUser.getDateOfBirth() != null
 						? calculateAge(existingUser.getDateOfBirth())
@@ -67,13 +67,7 @@ public class UserService {
 	}
 
 	/**
-	 * Creates a new user account based on the provided user creation request.
-	 * Checks for existing email, saves the user, generates an activation OTP,
-	 * and sends an account activation email.
-	 *
-	 * @param userCreateRequest the request object containing user details
-	 * @return UserCreateResponse containing the created user's information
-	 * @throws ResourceExistsException if a user with the given email already exists
+	 * Creates a new user account based on the provided request.
 	 */
 	public UserCreateResponse createUser(
 			UserCreateRequest userCreateRequest
@@ -141,7 +135,10 @@ public class UserService {
 				UserOtpType.ACCOUNT_ACTIVATION
 		);
 
-		return buildUserCreateResponseWithOtp(savedUser, otp.get("otp"));
+		return buildUserCreateResponseWithOtp(
+				savedUser,
+				otp.get("otp")
+		);
 	}
 
 	public UserCreateResponse adminCreateUser(
@@ -176,6 +173,7 @@ public class UserService {
 
 		if (userCreateRequest.userType() == UserType.ADMIN) {
 			String password = generateAdminPassword();
+
 			savedUser.setPassword(password);
 			savedUser = userRepository.save(savedUser);
 
@@ -200,22 +198,29 @@ public class UserService {
 		SecureRandom random = new SecureRandom();
 		StringBuilder password = new StringBuilder();
 
-		// Ensure at least one letter
-		password.append(letters.charAt(random.nextInt(letters.length())));
+		// Ensure at least one letter.
+		password.append(
+				letters.charAt(random.nextInt(letters.length()))
+		);
 
-		// Ensure at least one digit
-		password.append(digits.charAt(random.nextInt(digits.length())));
+		// Ensure at least one digit.
+		password.append(
+				digits.charAt(random.nextInt(digits.length()))
+		);
 
-		// Fill remaining characters
+		// Fill remaining characters.
 		for (int i = 2; i < 8; i++) {
-			password.append(all.charAt(random.nextInt(all.length())));
+			password.append(
+					all.charAt(random.nextInt(all.length()))
+			);
 		}
 
-		// Shuffle to avoid predictable positions
+		// Shuffle to avoid predictable positions.
 		char[] chars = password.toString().toCharArray();
 
 		for (int i = chars.length - 1; i > 0; i--) {
 			int j = random.nextInt(i + 1);
+
 			char temp = chars[i];
 			chars[i] = chars[j];
 			chars[j] = temp;
@@ -224,12 +229,6 @@ public class UserService {
 		return new String(chars);
 	}
 
-	/**
-	 * Builds a UserCreateResponse object from a User entity.
-	 *
-	 * @param user the User entity to convert
-	 * @return a UserCreateResponse containing the user's details
-	 */
 	private UserCreateResponse buildUserCreateResponse(User user) {
 		return UserCreateResponse.builder()
 				.userId(user.getId())
@@ -247,12 +246,6 @@ public class UserService {
 				.build();
 	}
 
-	/**
-	 * Builds a UserCreateResponse object from a User entity.
-	 *
-	 * @param user the User entity to convert
-	 * @return a UserCreateResponse containing the user's details
-	 */
 	private UserCreateResponse buildUserCreateResponseWithOtp(
 			User user,
 			String otp
@@ -314,15 +307,6 @@ public class UserService {
 				.build();
 	}
 
-	/**
-	 * Toggles the active status of a user.
-	 *
-	 * @param userId       the unique identifier of the user
-	 * @param activeStatus the desired active status (true to activate, false to deactivate)
-	 * @return UserResponse containing the updated user's details
-	 * @throws ResourceNotFoundException if the user is not found
-	 * @throws InvalidOperationException if the user is already in the desired state
-	 */
 	public UserResponse toggleUserActiveStatus(
 			String userId,
 			boolean activeStatus
@@ -345,16 +329,6 @@ public class UserService {
 		return buildUserResponse(updateUser(user));
 	}
 
-	/**
-	 * Authenticates a user based on the provided email address and password.
-	 *
-	 * @param userAuthRequest the user authentication request containing email and
-	 *                        password
-	 * @return a UserResponse object containing the authenticated user's details
-	 * @throws ResourceNotFoundException if authentication fails due to invalid
-	 *                                   credentials, inactive account, or blocked
-	 *                                   account
-	 */
 	public UserResponse authenticateUser(
 			UserAuthRequest userAuthRequest,
 			UserType userType
@@ -395,14 +369,6 @@ public class UserService {
 		return buildUserResponse(user);
 	}
 
-	/**
-	 * Resets the user's password after validating the provided OTP and ensuring the new password
-	 * is different from the current password.
-	 *
-	 * @param userResetPasswordRequest The request object containing the user ID, OTP, and new password
-	 * @throws ResourceNotFoundException if the user account is not found
-	 * @throws InvalidPasswordException  if the new password matches the current password
-	 */
 	public void resetPassword(
 			UserResetPasswordRequest userResetPasswordRequest
 	) {
@@ -449,15 +415,6 @@ public class UserService {
 		updateUser(user);
 	}
 
-	/**
-	 * Initiates the password reset process for a user by generating an OTP and
-	 * sending it to their email.
-	 *
-	 * @param emailAddress the email address of the user requesting the password
-	 *                     reset
-	 * @throws ResourceNotFoundException if no user is found with the provided email
-	 *                                   address
-	 */
 	public UserForgotPasswordResponse initiateResetPassword(
 			String emailAddress,
 			UserType userType
@@ -499,23 +456,13 @@ public class UserService {
 				.build();
 	}
 
-	public boolean existsByEmailAddressIgnoreCase(String emailAddress) {
-		return userRepository.existsByEmailAddressIgnoreCase(emailAddress);
+	public boolean existsByEmailAddressIgnoreCase(
+			String emailAddress
+	) {
+		return userRepository
+				.existsByEmailAddressIgnoreCase(emailAddress);
 	}
 
-	/**
-	 * Changes the password of a user based on their user ID and role. This method
-	 * retrieves the user by ID and role, validates the provided old password, and
-	 * updates the user's password with the new one. If the user is not found or the
-	 * old password is incorrect, appropriate exceptions are thrown.
-	 *
-	 * @param userId                the unique identifier of the user
-	 * @param passwordChangeRequest the request object containing the old and new
-	 *                              passwords
-	 * @throws ResourceNotFoundException if the user with the given ID and role is
-	 *                                   not found
-	 * @throws InvalidPasswordException  if the provided old password is incorrect
-	 */
 	public void changeUserPassword(
 			String userId,
 			UserType userType,
@@ -562,7 +509,9 @@ public class UserService {
 		updateUser(user);
 	}
 
-	public User verifyOtp(UserVerifyOtpRequest userVerifyOtpRequest) {
+	public User verifyOtp(
+			UserVerifyOtpRequest userVerifyOtpRequest
+	) {
 		User user = userRepository
 				.findByEmailAddressIgnoreCaseAndIsDeleted(
 						userVerifyOtpRequest.userEmail(),
@@ -573,7 +522,6 @@ public class UserService {
 								ApiResponseMessages.ERROR_USER_INVALID_ACCOUNT
 						)
 				);
-		;
 
 		userOtpService.validateOtp(
 				userVerifyOtpRequest.otp(),
@@ -585,7 +533,11 @@ public class UserService {
 		if (user.getUserType() == UserType.ADMIN
 				&& userVerifyOtpRequest.userOtpType()
 				== UserOtpType.ACCOUNT_ACTIVATION) {
-			user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+			user.setPassword(
+					passwordEncoder.encode(user.getPassword())
+			);
+
 			user.setPasswordChangedAt(LocalDateTime.now());
 		}
 
@@ -626,7 +578,9 @@ public class UserService {
 		}
 	}
 
-	public List<UserResponse> getAllUsersByType(UserType userType) {
+	public List<UserResponse> getAllUsersByType(
+			UserType userType
+	) {
 		return userRepository
 				.findAllByUserTypeAndIsDeleted(userType, false)
 				.stream()
@@ -634,7 +588,9 @@ public class UserService {
 				.toList();
 	}
 
-	public List<UserResponse> getAllUsersByIds(List<String> userIds) {
+	public List<UserResponse> getAllUsersByIds(
+			List<String> userIds
+	) {
 		return userRepository.findAllById(userIds)
 				.stream()
 				.map(this::buildUserResponse)
@@ -669,11 +625,13 @@ public class UserService {
 		user.setPhoneNumber(userUpdateRequest.phoneNumber());
 		user.setDateOfBirth(userUpdateRequest.dateOfBirth());
 		user.setProfilePictureUrl(userUpdateRequest.profilePictureUrl());
+
 		user.setAge(
 				userUpdateRequest.dateOfBirth() != null
 						? calculateAge(userUpdateRequest.dateOfBirth())
 						: ""
 		);
+
 		user.setGender(userUpdateRequest.gender());
 
 		updateUser(user);
@@ -691,7 +649,9 @@ public class UserService {
 	}
 
 	public Set<User> getUsersByIds(Set<String> userIds) {
-		return new HashSet<>(userRepository.findAllById(userIds));
+		return new HashSet<>(
+				userRepository.findAllById(userIds)
+		);
 	}
 
 	public void sendAccountSetupCompletionEmail(String userId) {
@@ -723,7 +683,10 @@ public class UserService {
 
 	public Optional<User> findByEmail(String email) {
 		return userRepository
-				.findByEmailAddressIgnoreCaseAndIsDeleted(email, false);
+				.findByEmailAddressIgnoreCaseAndIsDeleted(
+						email,
+						false
+				);
 	}
 
 	public User findById(String userId) {
@@ -758,7 +721,9 @@ public class UserService {
 				.profileColorCode("#000000")
 				.build();
 
-		return buildUserCreateResponse(userRepository.save(user));
+		return buildUserCreateResponse(
+				userRepository.save(user)
+		);
 	}
 
 	public String calculateAge(LocalDate dateOfBirth) {
@@ -767,16 +732,18 @@ public class UserService {
 					dateOfBirth,
 					LocalDate.now()
 			).getYears() + " years";
+
 		} catch (Exception e) {
 			return "";
 		}
 	}
 
 	public Set<String> getAdminEmails() {
-		return userRepository.findEmailAddressesByUserTypeAndIsDeleted(
-				UserType.ADMIN,
-				false
-		);
+		return userRepository
+				.findEmailAddressesByUserTypeAndIsDeleted(
+						UserType.ADMIN,
+						false
+				);
 	}
 
 	public void updateUserProfilePicture(
@@ -817,22 +784,30 @@ public class UserService {
 			Gender gender,
 			boolean activateAccount
 	) {
-		if (userRepository.existsByEmailAddressIgnoreCase(emailAddress)) {
+		if (userRepository.existsByEmailAddressIgnoreCase(
+				emailAddress
+		)) {
 			throw new ResourceExistsException(
 					ApiResponseMessages.ERROR_USER_EMAIL_ALREADY_EXISTS
 			);
 		}
 
 		User user = User.builder()
-				.firstName(firstName == null ? null : firstName.trim())
-				.lastName(lastName == null ? null : lastName.trim())
+				.firstName(
+						firstName == null ? null : firstName.trim()
+				)
+				.lastName(
+						lastName == null ? null : lastName.trim()
+				)
 				.emailAddress(
 						emailAddress == null
 								? null
 								: emailAddress.trim().toLowerCase()
 				)
 				.phoneNumber(
-						phoneNumber == null ? null : phoneNumber.trim()
+						phoneNumber == null
+								? null
+								: phoneNumber.trim()
 				)
 				.password(passwordEncoder.encode(password))
 				.userType(UserType.ADMIN)
@@ -871,7 +846,10 @@ public class UserService {
 						)
 				);
 
-		if (!bCryptPasswordEncoder.matches(password, user.getPassword())) {
+		if (!bCryptPasswordEncoder.matches(
+				password,
+				user.getPassword()
+		)) {
 			throw new InvalidInputException(
 					ApiResponseMessages.ERROR_USER_INVALID_EMAIL_OR_PASSWORD
 			);
@@ -918,7 +896,9 @@ public class UserService {
 		}
 
 		if (request.profilePictureUrl() != null) {
-			user.setProfilePictureUrl(request.profilePictureUrl().trim());
+			user.setProfilePictureUrl(
+					request.profilePictureUrl().trim()
+			);
 		}
 
 		if (request.dateOfBirth() != null) {
@@ -941,7 +921,9 @@ public class UserService {
 						)
 				);
 
-		if (user.getUserType() != UserType.ADMIN || user.isDeleted()) {
+		if (user.getUserType() != UserType.ADMIN
+				|| user.isDeleted()) {
+
 			throw new ResourceNotFoundException(
 					ApiResponseMessages.ERROR_USER_NOT_FOUND
 			);
@@ -950,7 +932,9 @@ public class UserService {
 		return user;
 	}
 
-	public User getAdminUserByEmailFromAdminModule(String emailAddress) {
+	public User getAdminUserByEmailFromAdminModule(
+			String emailAddress
+	) {
 		return userRepository
 				.findByEmailAddressIgnoreCaseAndUserTypeAndIsDeleted(
 						emailAddress == null
@@ -976,8 +960,11 @@ public class UserService {
 		return updateUser(user);
 	}
 
-	public void softDeleteAdminUserFromAdminModule(String userId) {
+	public void softDeleteAdminUserFromAdminModule(
+			String userId
+	) {
 		User user = getAdminUserByIdFromAdminModule(userId);
+
 		user.setDeleted(true);
 		user.setActive(false);
 		user.setDeletedAt(LocalDateTime.now());
@@ -1036,7 +1023,10 @@ public class UserService {
 			);
 		}
 
-		if (passwordEncoder.matches(newPassword, user.getPassword())) {
+		if (passwordEncoder.matches(
+				newPassword,
+				user.getPassword()
+		)) {
 			throw new InvalidPasswordException(
 					ApiResponseMessages.ERROR_USER_SAME_PASSWORD
 			);
@@ -1049,7 +1039,10 @@ public class UserService {
 				true
 		);
 
-		user.setPassword(passwordEncoder.encode(newPassword));
+		user.setPassword(
+				passwordEncoder.encode(newPassword)
+		);
+
 		user.setPasswordChangedAt(LocalDateTime.now());
 
 		updateUser(user);
@@ -1061,32 +1054,11 @@ public class UserService {
 
 	public List<User> findUsers(Query query) {
 		if (query == null) {
-			throw new InvalidInputException("User query is required");
+			throw new InvalidInputException(
+					"User query is required"
+			);
 		}
 
 		return mongoTemplate.find(query, User.class);
-	}
-
-	private User requireActiveUserForPlatform(String userId) {
-		if (userId == null || userId.isBlank()) {
-			throw new InvalidInputException(
-					"User Identifier is required"
-			);
-		}
-
-		User user = userRepository.findById(userId.trim())
-				.orElseThrow(() ->
-						new ResourceNotFoundException(
-								"User account not found"
-						)
-				);
-
-		if (user.isDeleted() || !user.isActive() || !user.isVerified()) {
-			throw new InvalidOperationException(
-					"User account not active and verified"
-			);
-		}
-
-		return user;
 	}
 }
