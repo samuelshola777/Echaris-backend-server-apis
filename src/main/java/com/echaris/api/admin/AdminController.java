@@ -63,12 +63,6 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/private/platform-access")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<AdminResponse>> checkPlatformAccess(
-            @RequestAttribute("validatedProfile") AdminResponse profile) {
-        return ResponseEntity.ok(new ApiResponse<>(true, "Admin access verified", profile));
-    }
 
     @GetMapping("/private/me")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
@@ -88,15 +82,12 @@ public class AdminController {
     }
 
     @GetMapping("/private")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<AdminResponse>> getAdmins() {
         return ResponseEntity.ok(adminService.getAdmins());
     }
 
     @GetMapping("/private/{adminId}")
-
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<AdminResponse> getAdminById(
             @PathVariable("adminId") String adminId
     ) {
@@ -104,7 +95,6 @@ public class AdminController {
     }
 
     @PutMapping("/private/{adminId}")
-
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AdminResponse> updateAdmin(
             @PathVariable("adminId") String adminId,
@@ -116,7 +106,6 @@ public class AdminController {
     }
 
     @PatchMapping("/private/{adminId}/activate")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<AdminResponse> activateAdmin(
             @PathVariable("adminId") String adminId
@@ -125,7 +114,6 @@ public class AdminController {
     }
 
     @PatchMapping("/private/{adminId}/deactivate")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<AdminResponse> deactivateAdmin(
             @PathVariable("adminId") String adminId
@@ -134,7 +122,6 @@ public class AdminController {
     }
 
     @DeleteMapping("/private/{adminId}")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> deleteAdmin(
             @PathVariable("adminId") String adminId
@@ -144,21 +131,18 @@ public class AdminController {
     }
 
     @GetMapping("/private/count")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Long> countAllAdmins() {
         return ResponseEntity.ok(adminService.countAllAdmins());
     }
 
     @GetMapping("/private/count/active")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Long> countActiveAdmins() {
         return ResponseEntity.ok(adminService.countActiveAdmins());
     }
 
     @GetMapping("/private/count/inactive")
-
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Long> countInactiveAdmins() {
         return ResponseEntity.ok(adminService.countInactiveAdmins());

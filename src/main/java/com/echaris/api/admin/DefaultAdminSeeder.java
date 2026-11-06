@@ -22,7 +22,7 @@ public class DefaultAdminSeeder {
     private final AdminRepository adminRepository;
     private final UserService userService;
 
-    @Value("${ADMIN_BOOTSTRAP_EMAIL:drive.relay14@gmail.com}") private String email;
+    @Value("${ADMIN_BOOTSTRAP_EMAIL:echarispersonal@gmail.com}") private String email;
     @Value("${ADMIN_BOOTSTRAP_PASSWORD:password}") private String password;
 
     @EventListener(ApplicationReadyEvent.class)

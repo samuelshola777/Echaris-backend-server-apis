@@ -35,7 +35,7 @@ public class AddressService {
     @PostConstruct
     public void ensureUserAddressIndex() {
         mongoTemplate.indexOps(Address.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("userId", Sort.Direction.ASC)
                                 .unique()

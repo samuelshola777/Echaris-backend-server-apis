@@ -15,12 +15,6 @@ import java.math.BigDecimal;
 @Document(collection = "withdrawal_items")
 public class WithdrawalItem extends BaseEntity {
 
-    public enum Status {
-        RESERVED,
-        PAID,
-        RELEASED
-    }
-
     private String commitmentId;
     private String transactionId;
     private String returnId;
@@ -29,5 +23,6 @@ public class WithdrawalItem extends BaseEntity {
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal amount;
 
-    private Status status = Status.RESERVED;
+    private WithdrawalItemStatus status =
+            WithdrawalItemStatus.RESERVED;
 }

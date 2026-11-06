@@ -5,18 +5,24 @@ import com.echaris.api.audit.AuditLog;
 import com.echaris.api.audit.AuditService;
 import com.echaris.api.commitment.request.CommitmentCreateRequest;
 import com.echaris.api.commitment.request.WithdrawalRequest;
+import com.echaris.api.commitmentduration.CommitmentDurationService;
 import com.echaris.api.commitmentrate.CommitmentRateHistory;
 import com.echaris.api.commitmentrate.CommitmentRateService;
 import com.echaris.api.customer.CustomerRepository;
 import com.echaris.api.notification.NotificationService;
 import com.echaris.api.payment.PayStackService;
 import com.echaris.api.payment.Payment;
+import com.echaris.api.payment.PaymentStatus;
 import com.echaris.api.payment.Transaction;
+import com.echaris.api.payment.TransactionDirection;
+import com.echaris.api.payment.TransactionPurpose;
+import com.echaris.api.payment.TransactionStatus;
 import com.echaris.api.userauthmgt.user.User;
 import com.echaris.api.userauthmgt.user.UserRepository;
 import com.echaris.api.userauthmgt.user.UserType;
 import com.echaris.api.utils.PaginatedData;
 import com.echaris.api.utils.UtilsService;
+import com.echaris.api.utils.emailsenderservice.EmailSenderService;
 import com.echaris.api.utils.exception.InvalidInputException;
 import com.echaris.api.utils.exception.InvalidOperationException;
 import com.echaris.api.utils.exception.ProviderPaymentNotFoundException;
@@ -28,7 +34,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -69,10 +74,11 @@ public class CommitmentService {
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
     private final CommitmentRateService rateService;
+    private final CommitmentDurationService durationService;
     private final AuditService auditService;
     private final NotificationService notificationService;
     private final PayStackService payStackService;
-    private final ApplicationEventPublisher eventPublisher;
+    private final EmailSenderService emailSenderService;
     private final PlatformTransactionManager transactionManager;
     private final UtilsService utilsService;
     private final HttpServletRequest httpServletRequest;
@@ -81,23 +87,23 @@ public class CommitmentService {
     private String callbackUrl;
 
     @PostConstruct
-    public void ensureIndexes() {
+    public void createIndexes() {
         mongoTemplate.indexOps(Commitment.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("userId", Sort.Direction.ASC)
                                 .on("createdAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(Commitment.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("status", Sort.Direction.ASC)
                                 .on("maturityAt", Sort.Direction.ASC)
                 );
 
         mongoTemplate.indexOps(CommitmentReturn.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("commitmentId", Sort.Direction.ASC)
                                 .on("monthNumber", Sort.Direction.ASC)
@@ -105,7 +111,7 @@ public class CommitmentService {
                 );
 
         mongoTemplate.indexOps(WithdrawalItem.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("transactionId", Sort.Direction.ASC)
                                 .on("returnId", Sort.Direction.ASC)
@@ -113,14 +119,14 @@ public class CommitmentService {
                 );
 
         mongoTemplate.indexOps(Transaction.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("reference", Sort.Direction.ASC)
                                 .unique()
                 );
 
         mongoTemplate.indexOps(Transaction.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("userId", Sort.Direction.ASC)
                                 .on("requestKey", Sort.Direction.ASC)
@@ -128,67 +134,67 @@ public class CommitmentService {
                 );
 
         mongoTemplate.indexOps(Transaction.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("status", Sort.Direction.ASC)
                                 .on("updatedAt", Sort.Direction.ASC)
                 );
 
         mongoTemplate.indexOps(Transaction.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("userId", Sort.Direction.ASC)
                                 .on("createdAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(Payment.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("transactionId", Sort.Direction.ASC)
                                 .unique()
                 );
 
         mongoTemplate.indexOps(Payment.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("userId", Sort.Direction.ASC)
                                 .on("paidAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(Payment.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("paidAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(CommitmentRateHistory.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("changedAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(AuditLog.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("occurredAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(AuditLog.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("event", Sort.Direction.ASC)
                                 .on("occurredAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(AuditLog.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("actorUserId", Sort.Direction.ASC)
                                 .on("occurredAt", Sort.Direction.DESC)
                 );
 
         mongoTemplate.indexOps(AuditLog.class)
-                .ensureIndex(
+                .createIndex(
                         new Index()
                                 .on("subjectUserId", Sort.Direction.ASC)
                                 .on("occurredAt", Sort.Direction.DESC)
@@ -196,22 +202,16 @@ public class CommitmentService {
     }
 
     public User currentUser() {
-        Object value = httpServletRequest.getAttribute(
-                "validatedClaims"
-        );
+        Object value = httpServletRequest.getAttribute("validatedClaims");
 
         if (!(value instanceof Claims claims)) {
-            throw new UnauthorizedException(
-                    "Authentication is required"
-            );
+            throw new UnauthorizedException("Authentication is required");
         }
 
         String userId = claims.get("userId", String.class);
 
         if (userId == null) {
-            throw new UnauthorizedException(
-                    "User identity is unavailable"
-            );
+            throw new UnauthorizedException("User identity is unavailable");
         }
 
         return userRepository.findById(userId)
@@ -221,9 +221,7 @@ public class CommitmentService {
                                 && !user.isDeleted()
                 )
                 .orElseThrow(() ->
-                        new UnauthorizedException(
-                                "User account is unavailable"
-                        )
+                        new UnauthorizedException("User account is unavailable")
                 );
     }
 
@@ -231,9 +229,7 @@ public class CommitmentService {
         User user = currentUser();
 
         if (user.getUserType() != UserType.ADMIN) {
-            throw new UnauthorizedException(
-                    "Admin access is required"
-            );
+            throw new UnauthorizedException("Admin access is required");
         }
 
         return user;
@@ -243,18 +239,13 @@ public class CommitmentService {
         User user = currentUser();
 
         if (user.getUserType() != UserType.CUSTOMER) {
-            throw new UnauthorizedException(
-                    "Customer access is required"
-            );
+            throw new UnauthorizedException("Customer access is required");
         }
 
-        customerRepository
-                .findByUserIdAndDeletedFalse(user.getId())
+        customerRepository.findByUserIdAndDeletedFalse(user.getId())
                 .filter(customer -> customer.isActive())
                 .orElseThrow(() ->
-                        new UnauthorizedException(
-                                "Customer account is unavailable"
-                        )
+                        new UnauthorizedException("Customer account is unavailable")
                 );
 
         return user;
@@ -264,27 +255,17 @@ public class CommitmentService {
         return httpServletRequest.getRemoteAddr();
     }
 
-    public Commitment create(
-            CommitmentCreateRequest request
-    ) {
+    public Commitment create(CommitmentCreateRequest request) {
         User user = customerUser();
         String ip = currentIp();
 
         CommitmentRules.kobo(request.capital());
-
-        if (!Set.of(3, 6, 12).contains(
-                request.durationMonths()
-        )) {
-            throw new InvalidInputException(
-                    "Duration must be 3, 6 or 12 months"
-            );
-        }
+        durationService.requireAvailable(request.durationMonths());
 
         return inTransaction(() -> {
             Commitment commitment = new Commitment();
 
             commitment.setId(UUID.randomUUID().toString());
-
             commitment.setCustomerId(
                     customerRepository
                             .findByUserIdAndDeletedFalse(user.getId())
@@ -296,11 +277,7 @@ public class CommitmentService {
             commitment.setName(request.name().trim());
             commitment.setCapital(request.capital().setScale(2));
             commitment.setDurationMonths(request.durationMonths());
-
-            commitment.setMonthlyRate(
-                    rateService.current().getPercentage()
-            );
-
+            commitment.setMonthlyRate(rateService.current().getPercentage());
             commitment.setAgreementAcceptedAt(Instant.now());
 
             mongoTemplate.insert(commitment);
@@ -313,10 +290,8 @@ public class CommitmentService {
                     ip,
                     Map.of(),
                     Map.of(
-                            "status",
-                            commitment.getStatus().name(),
-                            "capital",
-                            commitment.getCapital().toPlainString()
+                            "status", commitment.getStatus().name(),
+                            "capital", commitment.getCapital().toPlainString()
                     )
             );
 
@@ -337,20 +312,13 @@ public class CommitmentService {
     }
 
     public Commitment get(String id) {
-        return owned(
-                id,
-                customerUser().getId()
-        );
+        return owned(id, customerUser().getId());
     }
 
-    public PaginatedData list(
-            int page,
-            int size
-    ) {
+    public PaginatedData list(int page, int size) {
         return page(
                 Commitment.class,
-                Criteria.where("userId")
-                        .is(customerUser().getId()),
+                Criteria.where("userId").is(customerUser().getId()),
                 page,
                 size
         );
@@ -361,8 +329,7 @@ public class CommitmentService {
 
         return mongoTemplate.find(
                 Query.query(
-                        Criteria.where("commitmentId")
-                                .is(commitment.getId())
+                        Criteria.where("commitmentId").is(commitment.getId())
                 ).with(Sort.by("monthNumber")),
                 CommitmentReturn.class
         );
@@ -385,10 +352,7 @@ public class CommitmentService {
         );
     }
 
-    public PaginatedData history(
-            int page,
-            int size
-    ) {
+    public PaginatedData history(int page, int size) {
         requireAdmin();
 
         return page(
@@ -420,35 +384,22 @@ public class CommitmentService {
             criteria = criteria.and("event").is(event);
         }
 
-        return page(
-                AuditLog.class,
-                criteria,
-                page,
-                size
-        );
+        return page(AuditLog.class, criteria, page, size);
     }
 
-    public PaginatedData transactions(
-            int page,
-            int size
-    ) {
+    public PaginatedData transactions(int page, int size) {
         return page(
                 Transaction.class,
-                Criteria.where("userId")
-                        .is(customerUser().getId()),
+                Criteria.where("userId").is(customerUser().getId()),
                 page,
                 size
         );
     }
 
-    public PaginatedData payments(
-            int page,
-            int size
-    ) {
+    public PaginatedData payments(int page, int size) {
         return page(
                 Payment.class,
-                Criteria.where("userId")
-                        .is(customerUser().getId()),
+                Criteria.where("userId").is(customerUser().getId()),
                 page,
                 size
         );
@@ -480,51 +431,37 @@ public class CommitmentService {
 
         key(requestKey);
 
-        String fingerprint = fingerprint(
-                commitmentId + ":FUND"
-        );
+        String fingerprint = fingerprint(commitmentId + ":FUND");
 
         Transaction transaction = inTransaction(() -> {
-            Transaction existing = byKey(
-                    user.getId(),
-                    requestKey
-            );
+            Transaction existing = byKey(user.getId(), requestKey);
 
             if (existing != null) {
                 return sameRequest(existing, fingerprint);
             }
 
-            Commitment commitment = owned(
-                    commitmentId,
-                    user.getId()
-            );
+            Commitment commitment = owned(commitmentId, user.getId());
 
-            if (commitment.getStatus()
-                    != Commitment.Status.AWAITING_PAYMENT) {
+            if (commitment.getStatus() != CommitmentStatus.AWAITING_PAYMENT) {
                 throw new InvalidOperationException(
                         "This commitment cannot accept another funding payment"
                 );
             }
 
             if (commitment.getActiveTransactionId() != null) {
-                return transaction(
-                        commitment.getActiveTransactionId()
-                );
+                return transaction(commitment.getActiveTransactionId());
             }
 
             Transaction attempt = newTransaction(
                     commitment,
                     requestKey,
                     fingerprint,
-                    Transaction.Direction.INCOMING,
-                    Transaction.Purpose.CAPITAL,
+                    TransactionDirection.INCOMING,
+                    TransactionPurpose.CAPITAL,
                     commitment.getCapital()
             );
 
-            commitment.setActiveTransactionId(
-                    attempt.getId()
-            );
-
+            commitment.setActiveTransactionId(attempt.getId());
             save(commitment);
 
             audit(
@@ -535,18 +472,15 @@ public class CommitmentService {
                     ip,
                     Map.of(),
                     Map.of(
-                            "amount",
-                            attempt.getAmount().toPlainString(),
-                            "status",
-                            "PENDING"
+                            "amount", attempt.getAmount().toPlainString(),
+                            "status", "PENDING"
                     )
             );
 
             return attempt;
         });
 
-        if (transaction.getStatus()
-                != Transaction.Status.PENDING
+        if (transaction.getStatus() != TransactionStatus.PENDING
                 || transaction.getPaymentUrl() != null) {
             return transaction;
         }
@@ -569,24 +503,16 @@ public class CommitmentService {
                 Map<?, ?> response = data(
                         payStackService.initializePayment(
                                 Map.of(
-                                        "email",
-                                        user.getEmailAddress(),
+                                        "email", user.getEmailAddress(),
                                         "amount",
-                                        CommitmentRules.kobo(
-                                                transaction.getAmount()
-                                        ),
-                                        "currency",
-                                        "NGN",
-                                        "reference",
-                                        transaction.getReference(),
-                                        "callback_url",
-                                        callbackUrl,
+                                        CommitmentRules.kobo(transaction.getAmount()),
+                                        "currency", "NGN",
+                                        "reference", transaction.getReference(),
+                                        "callback_url", callbackUrl,
                                         "metadata",
                                         Map.of(
-                                                "commitmentId",
-                                                commitmentId,
-                                                "userId",
-                                                user.getId()
+                                                "commitmentId", commitmentId,
+                                                "userId", user.getId()
                                         )
                                 )
                         )
@@ -608,14 +534,11 @@ public class CommitmentService {
                                 Criteria.where("id")
                                         .is(transaction.getId())
                                         .and("status")
-                                        .is("PENDING")
+                                        .is(TransactionStatus.PENDING)
                         ),
                         new Update()
                                 .set("paymentUrl", url)
-                                .set(
-                                        "updatedAt",
-                                        LocalDateTime.now()
-                                ),
+                                .set("updatedAt", LocalDateTime.now()),
                         Transaction.class
                 );
 
@@ -653,14 +576,14 @@ public class CommitmentService {
                 ? Set.of()
                 : request.returnIds();
 
-        if (request.purpose() == Transaction.Purpose.CAPITAL
+        if (request.purpose() == TransactionPurpose.CAPITAL
                 && !returnIds.isEmpty()) {
             throw new InvalidInputException(
                     "Capital withdrawal cannot include interest records"
             );
         }
 
-        if (request.purpose() == Transaction.Purpose.INTEREST
+        if (request.purpose() == TransactionPurpose.INTEREST
                 && returnIds.isEmpty()) {
             throw new InvalidInputException(
                     "Select at least one interest record"
@@ -672,20 +595,14 @@ public class CommitmentService {
                         + ":"
                         + request.purpose()
                         + ":"
-                        + String.join(
-                        ",",
-                        new TreeSet<>(returnIds)
-                )
+                        + String.join(",", new TreeSet<>(returnIds))
                         + ":"
                         + request.bankCode()
                         + ":"
                         + request.accountNumber()
         );
 
-        Transaction existing = byKey(
-                user.getId(),
-                requestKey
-        );
+        Transaction existing = byKey(user.getId(), requestKey);
 
         if (existing != null) {
             return sameRequest(existing, fingerprint);
@@ -701,19 +618,12 @@ public class CommitmentService {
         Map<?, ?> recipient = data(
                 payStackService.createRecipient(
                         Map.of(
-                                "type",
-                                "nuban",
+                                "type", "nuban",
                                 "name",
-                                Objects.toString(
-                                        account.get("account_name"),
-                                        ""
-                                ),
-                                "account_number",
-                                request.accountNumber(),
-                                "bank_code",
-                                request.bankCode(),
-                                "currency",
-                                "NGN"
+                                Objects.toString(account.get("account_name"), ""),
+                                "account_number", request.accountNumber(),
+                                "bank_code", request.bankCode(),
+                                "currency", "NGN"
                         )
                 )
         );
@@ -729,28 +639,20 @@ public class CommitmentService {
             );
         }
 
-        Prepared prepared = inTransaction(() -> {
-            Transaction duplicate = byKey(
-                    user.getId(),
-                    requestKey
-            );
+        PreparedWithdrawal prepared = inTransaction(() -> {
+            Transaction duplicate = byKey(user.getId(), requestKey);
 
             if (duplicate != null) {
-                return new Prepared(
+                return new PreparedWithdrawal(
                         sameRequest(duplicate, fingerprint),
                         false
                 );
             }
 
-            Commitment commitment = owned(
-                    commitmentId,
-                    user.getId()
-            );
+            Commitment commitment = owned(commitmentId, user.getId());
 
-            if (commitment.getStatus()
-                    == Commitment.Status.AWAITING_PAYMENT
-                    || commitment.getStatus()
-                    == Commitment.Status.REVIEW_REQUIRED) {
+            if (commitment.getStatus() == CommitmentStatus.AWAITING_PAYMENT
+                    || commitment.getStatus() == CommitmentStatus.REVIEW_REQUIRED) {
                 throw new InvalidOperationException(
                         "This commitment is not available for withdrawals"
                 );
@@ -765,8 +667,7 @@ public class CommitmentService {
             List<CommitmentReturn> selected = List.of();
             BigDecimal amount;
 
-            if (request.purpose()
-                    == Transaction.Purpose.CAPITAL) {
+            if (request.purpose() == TransactionPurpose.CAPITAL) {
                 if (!CommitmentRules.matured(
                         commitment.getMaturityAt(),
                         Instant.now()
@@ -787,7 +688,7 @@ public class CommitmentService {
                                         .and("commitmentId")
                                         .is(commitment.getId())
                                         .and("status")
-                                        .is("AVAILABLE")
+                                        .is(CommitmentReturnStatus.AVAILABLE)
                         ),
                         CommitmentReturn.class
                 );
@@ -800,17 +701,14 @@ public class CommitmentService {
 
                 amount = selected.stream()
                         .map(CommitmentReturn::getAmount)
-                        .reduce(
-                                BigDecimal.ZERO,
-                                BigDecimal::add
-                        );
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
             }
 
             Transaction attempt = newTransaction(
                     commitment,
                     requestKey,
                     fingerprint,
-                    Transaction.Direction.OUTGOING,
+                    TransactionDirection.OUTGOING,
                     request.purpose(),
                     amount
             );
@@ -818,20 +716,12 @@ public class CommitmentService {
             attempt.setRecipientCode(recipientCode);
             mongoTemplate.save(attempt);
 
-            if (request.purpose()
-                    == Transaction.Purpose.CAPITAL) {
-                withdrawalItem(
-                        attempt,
-                        null,
-                        amount
-                );
+            if (request.purpose() == TransactionPurpose.CAPITAL) {
+                withdrawalItem(attempt, null, amount);
 
             } else {
                 for (CommitmentReturn item : selected) {
-                    item.setStatus(
-                            CommitmentReturn.Status.RESERVED
-                    );
-
+                    item.setStatus(CommitmentReturnStatus.RESERVED);
                     item.setTransactionId(attempt.getId());
 
                     mongoTemplate.save(item);
@@ -844,10 +734,7 @@ public class CommitmentService {
                 }
             }
 
-            commitment.setActiveTransactionId(
-                    attempt.getId()
-            );
-
+            commitment.setActiveTransactionId(attempt.getId());
             save(commitment);
 
             audit(
@@ -858,12 +745,9 @@ public class CommitmentService {
                     ip,
                     Map.of(),
                     Map.of(
-                            "amount",
-                            amount.toPlainString(),
-                            "purpose",
-                            attempt.getPurpose().name(),
-                            "status",
-                            "PENDING"
+                            "amount", amount.toPlainString(),
+                            "purpose", attempt.getPurpose().name(),
+                            "status", "PENDING"
                     )
             );
 
@@ -872,9 +756,7 @@ public class CommitmentService {
                     "WITHDRAWAL_INITIATED",
                     "Withdrawal processing",
                     "Your "
-                            + attempt.getPurpose()
-                            .name()
-                            .toLowerCase(Locale.ROOT)
+                            + attempt.getPurpose().name().toLowerCase(Locale.ROOT)
                             + " withdrawal of "
                             + money(amount)
                             + " is processing. Reference: "
@@ -883,7 +765,7 @@ public class CommitmentService {
                     true
             );
 
-            return new Prepared(attempt, true);
+            return new PreparedWithdrawal(attempt, true);
         });
 
         if (prepared.created()) {
@@ -891,25 +773,18 @@ public class CommitmentService {
                 data(
                         payStackService.initiateTransfer(
                                 Map.of(
-                                        "source",
-                                        "balance",
+                                        "source", "balance",
                                         "amount",
                                         CommitmentRules.kobo(
-                                                prepared.transaction()
-                                                        .getAmount()
+                                                prepared.transaction().getAmount()
                                         ),
-                                        "recipient",
-                                        recipientCode,
+                                        "recipient", recipientCode,
                                         "reference",
-                                        prepared.transaction()
-                                                .getReference(),
+                                        prepared.transaction().getReference(),
                                         "reason",
                                         "Echaris "
-                                                + request.purpose()
-                                                .name()
-                                                .toLowerCase(
-                                                        Locale.ROOT
-                                                )
+                                                + request.purpose().name()
+                                                .toLowerCase(Locale.ROOT)
                                                 + " withdrawal"
                                 )
                         )
@@ -925,33 +800,22 @@ public class CommitmentService {
             }
         }
 
-        return transaction(
-                prepared.transaction().getId()
-        );
+        return transaction(prepared.transaction().getId());
     }
 
     public Transaction verify(
             String transactionId,
             boolean admin
     ) {
-        User actor = admin
-                ? requireAdmin()
-                : customerUser();
+        User actor = admin ? requireAdmin() : customerUser();
 
         Transaction attempt = transaction(transactionId);
 
-        if (!admin
-                && !attempt.getUserId().equals(actor.getId())) {
-            throw new ResourceNotFoundException(
-                    "Transaction not found"
-            );
+        if (!admin && !attempt.getUserId().equals(actor.getId())) {
+            throw new ResourceNotFoundException("Transaction not found");
         }
 
-        return verify(
-                attempt,
-                actor.getId(),
-                currentIp()
-        );
+        return verify(attempt, actor.getId(), currentIp());
     }
 
     private Transaction verify(
@@ -960,22 +824,12 @@ public class CommitmentService {
             String ip
     ) {
         Map<?, ?> response = data(
-                attempt.getDirection()
-                        == Transaction.Direction.INCOMING
-                        ? payStackService.verifyPayment(
-                        attempt.getReference()
-                )
-                        : payStackService.verifyTransfer(
-                        attempt.getReference()
-                )
+                attempt.getDirection() == TransactionDirection.INCOMING
+                        ? payStackService.verifyPayment(attempt.getReference())
+                        : payStackService.verifyTransfer(attempt.getReference())
         );
 
-        return applyProvider(
-                attempt,
-                response,
-                actorUserId,
-                ip
-        );
+        return applyProvider(attempt, response, actorUserId, ip);
     }
 
     public void webhook(
@@ -988,10 +842,7 @@ public class CommitmentService {
         );
 
         Transaction attempt = mongoTemplate.findOne(
-                Query.query(
-                        Criteria.where("reference")
-                                .is(reference)
-                ),
+                Query.query(Criteria.where("reference").is(reference)),
                 Transaction.class
         );
 
@@ -1002,8 +853,7 @@ public class CommitmentService {
         boolean incoming = event.equals("charge.success");
 
         if (incoming
-                != (attempt.getDirection()
-                == Transaction.Direction.INCOMING)) {
+                != (attempt.getDirection() == TransactionDirection.INCOMING)) {
             return;
         }
 
@@ -1012,22 +862,14 @@ public class CommitmentService {
                 : event.substring("transfer.".length());
 
         if (!expected.equals(
-                Objects.toString(
-                        payload.get("status"),
-                        ""
-                )
+                Objects.toString(payload.get("status"), "")
         )) {
             throw new InvalidOperationException(
                     "Paystack event status does not match its payload"
             );
         }
 
-        applyProvider(
-                attempt,
-                payload,
-                null,
-                null
-        );
+        applyProvider(attempt, payload, null, null);
     }
 
     private Transaction applyProvider(
@@ -1036,39 +878,28 @@ public class CommitmentService {
             String actorUserId,
             String ip
     ) {
-        if (!attempt.getReference()
-                .equals(payload.get("reference"))
+        if (!attempt.getReference().equals(payload.get("reference"))
                 || !"NGN".equals(payload.get("currency"))
                 || payload.get("amount") == null
-                || new BigDecimal(
-                payload.get("amount").toString()
-        ).compareTo(
-                BigDecimal.valueOf(
-                        CommitmentRules.kobo(
-                                attempt.getAmount()
+                || new BigDecimal(payload.get("amount").toString())
+                .compareTo(
+                        BigDecimal.valueOf(
+                                CommitmentRules.kobo(attempt.getAmount())
                         )
-                )
-        ) != 0) {
+                ) != 0) {
             throw new InvalidOperationException(
                     "Paystack amount or reference does not match this transaction"
             );
         }
 
-        if (attempt.getDirection()
-                == Transaction.Direction.OUTGOING) {
+        if (attempt.getDirection() == TransactionDirection.OUTGOING) {
             Object recipient = payload.get("recipient");
 
             String code = recipient instanceof Map<?, ?> map
-                    ? Objects.toString(
-                    map.get("recipient_code"),
-                    ""
-            )
+                    ? Objects.toString(map.get("recipient_code"), "")
                     : Objects.toString(recipient, "");
 
-            if (!Objects.equals(
-                    attempt.getRecipientCode(),
-                    code
-            )) {
+            if (!Objects.equals(attempt.getRecipientCode(), code)) {
                 throw new InvalidOperationException(
                         "Paystack payout recipient does not match"
                 );
@@ -1080,11 +911,10 @@ public class CommitmentService {
                 ""
         ).toLowerCase(Locale.ROOT);
 
-        Transaction.Status result = switch (providerStatus) {
-            case "success" -> Transaction.Status.SUCCESS;
-            case "failed" -> Transaction.Status.FAILED;
-            case "reversed", "refunded" ->
-                    Transaction.Status.REVERSED;
+        TransactionStatus result = switch (providerStatus) {
+            case "success" -> TransactionStatus.SUCCESS;
+            case "failed" -> TransactionStatus.FAILED;
+            case "reversed", "refunded" -> TransactionStatus.REVERSED;
             default -> null;
         };
 
@@ -1094,7 +924,7 @@ public class CommitmentService {
                             Criteria.where("id")
                                     .is(attempt.getId())
                                     .and("status")
-                                    .is("PENDING")
+                                    .is(TransactionStatus.PENDING)
                     ),
                     new Update()
                             .set("providerStatus", providerStatus)
@@ -1105,65 +935,43 @@ public class CommitmentService {
             return transaction(attempt.getId());
         }
 
-        Instant paidAt = result == Transaction.Status.SUCCESS
-                && attempt.getDirection()
-                == Transaction.Direction.INCOMING
+        Instant paidAt = result == TransactionStatus.SUCCESS
+                && attempt.getDirection() == TransactionDirection.INCOMING
                 ? Instant.parse(
-                Objects.toString(
-                        payload.get("paid_at"),
-                        ""
-                )
+                Objects.toString(payload.get("paid_at"), "")
         )
                 : Instant.now();
 
         return inTransaction(() -> {
-            Transaction current = transaction(
-                    attempt.getId()
-            );
+            Transaction current = transaction(attempt.getId());
 
             if (current.getStatus() == result
-                    || current.getStatus()
-                    == Transaction.Status.REVERSED) {
+                    || current.getStatus() == TransactionStatus.REVERSED) {
                 return current;
             }
 
-            Commitment commitment = byId(
-                    current.getCommitmentId()
-            );
+            Commitment commitment = byId(current.getCommitmentId());
 
-            if (current.getStatus()
-                    != Transaction.Status.PENDING
-                    && !(current.getStatus()
-                    == Transaction.Status.SUCCESS
-                    && result
-                    == Transaction.Status.REVERSED)) {
+            if (current.getStatus() != TransactionStatus.PENDING
+                    && !(current.getStatus() == TransactionStatus.SUCCESS
+                    && result == TransactionStatus.REVERSED)) {
 
-                if (!providerStatus.equals(
-                        current.getProviderStatus()
-                )) {
-                    String previousStatus =
-                            current.getStatus().name();
+                if (!providerStatus.equals(current.getProviderStatus())) {
+                    String previousStatus = current.getStatus().name();
 
-                    commitment.setStatus(
-                            Commitment.Status.REVIEW_REQUIRED
-                    );
-
+                    commitment.setStatus(CommitmentStatus.REVIEW_REQUIRED);
                     save(commitment);
 
-                    if (result == Transaction.Status.SUCCESS) {
+                    if (result == TransactionStatus.SUCCESS) {
                         // Record actual money, but freeze allocation
                         // when the provider contradicts a previous failure.
                         confirmedPayment(current, paidAt);
 
-                        current.setStatus(
-                                Transaction.Status.SUCCESS
-                        );
-
+                        current.setStatus(TransactionStatus.SUCCESS);
                         current.setCompletedAt(Instant.now());
                     }
 
                     current.setProviderStatus(providerStatus);
-
                     mongoTemplate.save(current);
 
                     audit(
@@ -1174,10 +982,8 @@ public class CommitmentService {
                             ip,
                             Map.of("status", previousStatus),
                             Map.of(
-                                    "status",
-                                    current.getStatus().name(),
-                                    "providerStatus",
-                                    providerStatus
+                                    "status", current.getStatus().name(),
+                                    "providerStatus", providerStatus
                             )
                     );
 
@@ -1195,8 +1001,7 @@ public class CommitmentService {
                 return current;
             }
 
-            Transaction.Status previous =
-                    current.getStatus();
+            TransactionStatus previous = current.getStatus();
 
             current.setStatus(result);
             current.setProviderStatus(providerStatus);
@@ -1205,18 +1010,15 @@ public class CommitmentService {
 
             mongoTemplate.save(current);
 
-            if (result == Transaction.Status.SUCCESS) {
+            if (result == TransactionStatus.SUCCESS) {
                 confirmedPayment(current, paidAt);
 
-                if (current.getDirection()
-                        == Transaction.Direction.INCOMING) {
+                if (current.getDirection() == TransactionDirection.INCOMING) {
                     if (commitment.getFundedAt() != null
                             || commitment.getStatus()
-                            == Commitment.Status.REVIEW_REQUIRED) {
+                            == CommitmentStatus.REVIEW_REQUIRED) {
 
-                        commitment.setStatus(
-                                Commitment.Status.REVIEW_REQUIRED
-                        );
+                        commitment.setStatus(CommitmentStatus.REVIEW_REQUIRED);
 
                         audit(
                                 "ADDITIONAL_FUNDING_REQUIRES_REVIEW",
@@ -1227,8 +1029,7 @@ public class CommitmentService {
                                 Map.of(),
                                 Map.of(
                                         "amount",
-                                        current.getAmount()
-                                                .toPlainString()
+                                        current.getAmount().toPlainString()
                                 )
                         );
 
@@ -1242,29 +1043,17 @@ public class CommitmentService {
                                 )
                         );
 
-                        commitment.setStatus(
-                                Commitment.Status.LOCKED
-                        );
+                        commitment.setStatus(CommitmentStatus.LOCKED);
 
                         for (int month = 1;
                              month <= commitment.getDurationMonths();
                              month++) {
 
-                            CommitmentReturn item =
-                                    new CommitmentReturn();
+                            CommitmentReturn item = new CommitmentReturn();
 
-                            item.setId(
-                                    UUID.randomUUID().toString()
-                            );
-
-                            item.setCommitmentId(
-                                    commitment.getId()
-                            );
-
-                            item.setUserId(
-                                    commitment.getUserId()
-                            );
-
+                            item.setId(UUID.randomUUID().toString());
+                            item.setCommitmentId(commitment.getId());
+                            item.setUserId(commitment.getUserId());
                             item.setMonthNumber(month);
 
                             item.setAmount(
@@ -1281,30 +1070,20 @@ public class CommitmentService {
                 } else {
                     settleItems(current, true);
 
-                    if (current.getPurpose()
-                            == Transaction.Purpose.CAPITAL) {
-
+                    if (current.getPurpose() == TransactionPurpose.CAPITAL) {
                         if (commitment.getStatus()
-                                != Commitment.Status.REVIEW_REQUIRED) {
-                            commitment.setStatus(
-                                    Commitment.Status.WITHDRAWN
-                            );
+                                != CommitmentStatus.REVIEW_REQUIRED) {
+                            commitment.setStatus(CommitmentStatus.WITHDRAWN);
                         }
 
-                        commitment.setCapitalWithdrawnAt(
-                                Instant.now()
-                        );
+                        commitment.setCapitalWithdrawnAt(Instant.now());
                     }
                 }
 
-            } else if (current.getDirection()
-                    == Transaction.Direction.INCOMING
-                    && result
-                    == Transaction.Status.REVERSED) {
+            } else if (current.getDirection() == TransactionDirection.INCOMING
+                    && result == TransactionStatus.REVERSED) {
 
-                commitment.setStatus(
-                        Commitment.Status.REVIEW_REQUIRED
-                );
+                commitment.setStatus(CommitmentStatus.REVIEW_REQUIRED);
 
                 mongoTemplate.updateFirst(
                         Query.query(
@@ -1312,41 +1091,32 @@ public class CommitmentService {
                                         .is(current.getId())
                         ),
                         new Update()
-                                .set("status", "REVERSED")
+                                .set("status", PaymentStatus.REVERSED)
                                 .set("reversedAt", Instant.now()),
                         Payment.class
                 );
 
-            } else if (current.getDirection()
-                    == Transaction.Direction.OUTGOING) {
-
+            } else if (current.getDirection() == TransactionDirection.OUTGOING) {
                 settleItems(current, false);
 
-                if (result == Transaction.Status.REVERSED) {
+                if (result == TransactionStatus.REVERSED) {
                     mongoTemplate.updateFirst(
                             Query.query(
                                     Criteria.where("transactionId")
                                             .is(current.getId())
                             ),
                             new Update()
-                                    .set("status", "REVERSED")
-                                    .set(
-                                            "reversedAt",
-                                            Instant.now()
-                                    ),
+                                    .set("status", PaymentStatus.REVERSED)
+                                    .set("reversedAt", Instant.now()),
                             Payment.class
                     );
 
-                    if (current.getPurpose()
-                            == Transaction.Purpose.CAPITAL) {
-
+                    if (current.getPurpose() == TransactionPurpose.CAPITAL) {
                         commitment.setCapitalWithdrawnAt(null);
 
                         if (commitment.getStatus()
-                                != Commitment.Status.REVIEW_REQUIRED) {
-                            commitment.setStatus(
-                                    Commitment.Status.MATURED
-                            );
+                                != CommitmentStatus.REVIEW_REQUIRED) {
+                            commitment.setStatus(CommitmentStatus.MATURED);
                         }
                     }
                 }
@@ -1361,13 +1131,11 @@ public class CommitmentService {
 
             save(commitment);
 
-            String event =
-                    (
-                            current.getDirection()
-                                    == Transaction.Direction.INCOMING
-                                    ? "FUNDING_"
-                                    : "WITHDRAWAL_"
-                    ) + result.name();
+            String event = (
+                    current.getDirection() == TransactionDirection.INCOMING
+                            ? "FUNDING_"
+                            : "WITHDRAWAL_"
+            ) + result.name();
 
             audit(
                     event,
@@ -1377,60 +1145,48 @@ public class CommitmentService {
                     ip,
                     Map.of("status", previous.name()),
                     Map.of(
-                            "status",
-                            result.name(),
-                            "amount",
-                            current.getAmount().toPlainString(),
-                            "purpose",
-                            current.getPurpose().name()
+                            "status", result.name(),
+                            "amount", current.getAmount().toPlainString(),
+                            "purpose", current.getPurpose().name()
                     )
             );
 
             String message;
 
-            if (commitment.getStatus()
-                    == Commitment.Status.REVIEW_REQUIRED) {
-                message =
-                        "Payment status requires review. Reference: "
-                                + current.getReference()
-                                + ".";
+            if (commitment.getStatus() == CommitmentStatus.REVIEW_REQUIRED) {
+                message = "Payment status requires review. Reference: "
+                        + current.getReference()
+                        + ".";
 
-            } else if (current.getDirection()
-                    == Transaction.Direction.INCOMING
-                    && result
-                    == Transaction.Status.SUCCESS) {
+            } else if (current.getDirection() == TransactionDirection.INCOMING
+                    && result == TransactionStatus.SUCCESS) {
 
-                message =
-                        "Funding of "
-                                + money(current.getAmount())
-                                + " confirmed. Capital is locked until "
-                                + commitment.getMaturityAt()
-                                + ". Total interest available: "
-                                + money(
-                                CommitmentRules.monthlyReturn(
-                                        commitment.getCapital(),
-                                        commitment.getMonthlyRate()
-                                ).multiply(
-                                        BigDecimal.valueOf(
-                                                commitment.getDurationMonths()
-                                        )
+                message = "Funding of "
+                        + money(current.getAmount())
+                        + " confirmed. Capital is locked until "
+                        + commitment.getMaturityAt()
+                        + ". Total interest available: "
+                        + money(
+                        CommitmentRules.monthlyReturn(
+                                commitment.getCapital(),
+                                commitment.getMonthlyRate()
+                        ).multiply(
+                                BigDecimal.valueOf(
+                                        commitment.getDurationMonths()
                                 )
                         )
-                                + ".";
+                )
+                        + ".";
 
             } else {
-                message =
-                        current.getPurpose().name()
-                                + " "
-                                + current.getDirection()
-                                .name()
-                                .toLowerCase(Locale.ROOT)
-                                + " payment of "
-                                + money(current.getAmount())
-                                + ": "
-                                + result.name()
-                                .toLowerCase(Locale.ROOT)
-                                + ".";
+                message = current.getPurpose().name()
+                        + " "
+                        + current.getDirection().name().toLowerCase(Locale.ROOT)
+                        + " payment of "
+                        + money(current.getAmount())
+                        + ": "
+                        + result.name().toLowerCase(Locale.ROOT)
+                        + ".";
             }
 
             notifyUsers(
@@ -1438,10 +1194,8 @@ public class CommitmentService {
                     event,
                     event.replace('_', ' '),
                     message,
-                    current.getDirection()
-                            == Transaction.Direction.OUTGOING
-                            || result
-                            == Transaction.Status.SUCCESS
+                    current.getDirection() == TransactionDirection.OUTGOING
+                            || result == TransactionStatus.SUCCESS
             );
 
             return current;
@@ -1454,8 +1208,7 @@ public class CommitmentService {
     ) {
         List<WithdrawalItem> items = mongoTemplate.find(
                 Query.query(
-                        Criteria.where("transactionId")
-                                .is(attempt.getId())
+                        Criteria.where("transactionId").is(attempt.getId())
                 ),
                 WithdrawalItem.class
         );
@@ -1468,11 +1221,10 @@ public class CommitmentService {
 
         for (WithdrawalItem item : items) {
             if (item.getReturnId() != null) {
-                CommitmentReturn interest =
-                        mongoTemplate.findById(
-                                item.getReturnId(),
-                                CommitmentReturn.class
-                        );
+                CommitmentReturn interest = mongoTemplate.findById(
+                        item.getReturnId(),
+                        CommitmentReturn.class
+                );
 
                 if (interest == null
                         || !attempt.getId().equals(
@@ -1485,8 +1237,8 @@ public class CommitmentService {
 
                 interest.setStatus(
                         success
-                                ? CommitmentReturn.Status.PAID
-                                : CommitmentReturn.Status.AVAILABLE
+                                ? CommitmentReturnStatus.PAID
+                                : CommitmentReturnStatus.AVAILABLE
                 );
 
                 if (!success) {
@@ -1498,8 +1250,8 @@ public class CommitmentService {
 
             item.setStatus(
                     success
-                            ? WithdrawalItem.Status.PAID
-                            : WithdrawalItem.Status.RELEASED
+                            ? WithdrawalItemStatus.PAID
+                            : WithdrawalItemStatus.RELEASED
             );
 
             mongoTemplate.save(item);
@@ -1529,8 +1281,8 @@ public class CommitmentService {
             Commitment commitment,
             String key,
             String fingerprint,
-            Transaction.Direction direction,
-            Transaction.Purpose purpose,
+            TransactionDirection direction,
+            TransactionPurpose purpose,
             BigDecimal amount
     ) {
         Transaction attempt = new Transaction();
@@ -1575,7 +1327,6 @@ public class CommitmentService {
             boolean admins
     ) {
         Set<String> recipients = new LinkedHashSet<>();
-
         recipients.add(commitment.getUserId());
 
         if (admins) {
@@ -1587,24 +1338,19 @@ public class CommitmentService {
                     );
         }
 
-        for (User recipient :
-                userRepository.findAllById(recipients)) {
-
+        for (User recipient : userRepository.findAllById(recipients)) {
             if (recipient.isDeleted()
                     || !recipient.isActive()
                     || !recipient.isVerified()) {
                 continue;
             }
 
-            if (!recipient.getId().equals(
-                    commitment.getUserId()
-            ) && recipient.getUserType() != UserType.ADMIN) {
+            if (!recipient.getId().equals(commitment.getUserId())
+                    && recipient.getUserType() != UserType.ADMIN) {
                 continue;
             }
 
-            String body = recipient.getId().equals(
-                    commitment.getUserId()
-            )
+            String body = recipient.getId().equals(commitment.getUserId())
                     ? message
                     : "Customer user ID: "
                     + commitment.getUserId()
@@ -1619,19 +1365,22 @@ public class CommitmentService {
                     "COMMITMENT",
                     commitment.getId(),
                     Map.of(
-                            "commitmentId",
-                            commitment.getId(),
-                            "customerUserId",
-                            commitment.getUserId()
+                            "commitmentId", commitment.getId(),
+                            "customerUserId", commitment.getUserId()
                     )
             );
 
-            eventPublisher.publishEvent(
-                    new CommitmentMailListener.Mail(
-                            recipient.getEmailAddress(),
-                            recipient.getFirstName(),
-                            title,
-                            body
+            emailSenderService.sendTemplateEmailAfterCommit(
+                    recipient.getEmailAddress(),
+                    title,
+                    "commitment-event",
+                    Map.of(
+                            "name",
+                            recipient.getFirstName() == null
+                                    ? "there"
+                                    : recipient.getFirstName(),
+                            "title", title,
+                            "message", body
                     )
             );
         }
@@ -1664,7 +1413,7 @@ public class CommitmentService {
         List<Commitment> due = mongoTemplate.find(
                 Query.query(
                         Criteria.where("status")
-                                .is("LOCKED")
+                                .is(CommitmentStatus.LOCKED)
                                 .and("maturityAt")
                                 .lte(Instant.now())
                 ).limit(100),
@@ -1676,8 +1425,7 @@ public class CommitmentService {
                 inTransaction(() -> {
                     Commitment current = byId(item.getId());
 
-                    if (current.getStatus()
-                            == Commitment.Status.LOCKED
+                    if (current.getStatus() == CommitmentStatus.LOCKED
                             && CommitmentRules.matured(
                             current.getMaturityAt(),
                             Instant.now()
@@ -1700,14 +1448,11 @@ public class CommitmentService {
     }
 
     private void mature(Commitment commitment) {
-        if (commitment.getStatus()
-                != Commitment.Status.LOCKED) {
+        if (commitment.getStatus() != CommitmentStatus.LOCKED) {
             return;
         }
 
-        commitment.setStatus(
-                Commitment.Status.MATURED
-        );
+        commitment.setStatus(CommitmentStatus.MATURED);
 
         audit(
                 "COMMITMENT_MATURED",
@@ -1736,8 +1481,7 @@ public class CommitmentService {
     public void reconcilePending() {
         List<Transaction> pending = mongoTemplate.find(
                 Query.query(
-                                Criteria.where("status")
-                                        .is("PENDING")
+                                Criteria.where("status").is(TransactionStatus.PENDING)
                         )
                         .with(Sort.by("updatedAt"))
                         .limit(5),
@@ -1746,11 +1490,7 @@ public class CommitmentService {
 
         for (Transaction attempt : pending) {
             try {
-                verify(
-                        attempt,
-                        null,
-                        null
-                );
+                verify(attempt, null, null);
 
             } catch (RuntimeException exception) {
                 log.warn(
@@ -1764,7 +1504,7 @@ public class CommitmentService {
                                 Criteria.where("id")
                                         .is(attempt.getId())
                                         .and("status")
-                                        .is("PENDING")
+                                        .is(TransactionStatus.PENDING)
                         ),
                         new Update().set(
                                 "updatedAt",
@@ -1783,9 +1523,7 @@ public class CommitmentService {
         );
 
         if (commitment == null) {
-            throw new ResourceNotFoundException(
-                    "Commitment not found"
-            );
+            throw new ResourceNotFoundException("Commitment not found");
         }
 
         return commitment;
@@ -1798,9 +1536,7 @@ public class CommitmentService {
         Commitment commitment = byId(id);
 
         if (!commitment.getUserId().equals(userId)) {
-            throw new ResourceNotFoundException(
-                    "Commitment not found"
-            );
+            throw new ResourceNotFoundException("Commitment not found");
         }
 
         return commitment;
@@ -1813,9 +1549,7 @@ public class CommitmentService {
         );
 
         if (attempt == null) {
-            throw new ResourceNotFoundException(
-                    "Transaction not found"
-            );
+            throw new ResourceNotFoundException("Transaction not found");
         }
 
         return attempt;
@@ -1863,13 +1597,8 @@ public class CommitmentService {
             int page,
             int size
     ) {
-        if (page < 1
-                || page > 10000
-                || size < 1
-                || size > 100) {
-            throw new InvalidInputException(
-                    "Invalid page or size"
-            );
+        if (page < 1 || page > 10000 || size < 1 || size > 100) {
+            throw new InvalidInputException("Invalid page or size");
         }
 
         long total = mongoTemplate.count(
@@ -1910,8 +1639,7 @@ public class CommitmentService {
             Map<String, Object> response
     ) {
         if (!Boolean.TRUE.equals(response.get("status"))
-                || !(response.get("data")
-                instanceof Map<?, ?> data)) {
+                || !(response.get("data") instanceof Map<?, ?> data)) {
             throw new InvalidOperationException(
                     "Paystack did not confirm this request"
             );
@@ -1934,15 +1662,11 @@ public class CommitmentService {
             return HexFormat.of().formatHex(
                     MessageDigest.getInstance("SHA-256")
                             .digest(
-                                    value.getBytes(
-                                            StandardCharsets.UTF_8
-                                    )
+                                    value.getBytes(StandardCharsets.UTF_8)
                             )
             );
 
-        } catch (
-                java.security.NoSuchAlgorithmException exception
-        ) {
+        } catch (java.security.NoSuchAlgorithmException exception) {
             throw new IllegalStateException(exception);
         }
     }
@@ -1954,9 +1678,8 @@ public class CommitmentService {
     private <T> T inTransaction(Supplier<T> action) {
         for (int attempt = 0; ; attempt++) {
             try {
-                return new TransactionTemplate(
-                        transactionManager
-                ).execute(status -> action.get());
+                return new TransactionTemplate(transactionManager)
+                        .execute(status -> action.get());
 
             } catch (DataAccessException exception) {
                 boolean retry =
@@ -1988,11 +1711,5 @@ public class CommitmentService {
                 }
             }
         }
-    }
-
-    private record Prepared(
-            Transaction transaction,
-            boolean created
-    ) {
     }
 }
