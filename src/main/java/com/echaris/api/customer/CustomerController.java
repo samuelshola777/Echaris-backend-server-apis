@@ -387,7 +387,7 @@ public class CustomerController {
     ) {
         return new ApiResponse<>(
                 true,
-                "Notification marked as read",
+                "Notification marked as read.....",
                 customerService.readMyKycNotification(notificationId)
         );
     }
