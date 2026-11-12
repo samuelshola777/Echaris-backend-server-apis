@@ -40,11 +40,9 @@ public class AdminController {
             @Valid @RequestBody AdminForgotPasswordRequest request
     ) {
         try {
-            // The service must deliver the OTP through email.
-            // Do not expose the returned OTP in this public response.
             adminService.initiateAdminForgotPassword(request);
         } catch (ResourceNotFoundException | InvalidOperationException ignored) {
-            // Keep missing or ineligible accounts indistinguishable.
+
         }
 
         return ResponseEntity.ok(
@@ -148,15 +146,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.countInactiveAdmins());
     }
 
-
-
-    @GetMapping("/private/portal/summary")
-
-
-
-
-
-
     @PatchMapping("/private/profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<AdminResponse> updateProfile(@Valid @RequestBody AdminUpdateRequest request) {
@@ -174,7 +163,7 @@ public class AdminController {
     @GetMapping("/private/portal/admins")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<PaginatedData> adminPage(@RequestParam(defaultValue = "1") int page,
-                                                                        @RequestParam(defaultValue = "20") int size) {
+                                                @RequestParam(defaultValue = "20") int size) {
         return new ApiResponse<>(true, "Administrators retrieved", adminService.getAdminPage(page, size));
     }
 
