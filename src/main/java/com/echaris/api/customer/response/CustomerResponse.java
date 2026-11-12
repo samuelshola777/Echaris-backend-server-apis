@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public record CustomerResponse(
         String customerId,
         String customerNumber,
+        String referralCode,
         String userId,
         String firstName,
         String lastName,
@@ -36,6 +37,7 @@ public record CustomerResponse(
         return CustomerResponse.builder()
                 .customerId(customer.getId())
                 .customerNumber(customer.getCustomerNumber())
+                .referralCode(customer.getReferralCode())
                 .userId(user.getId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())

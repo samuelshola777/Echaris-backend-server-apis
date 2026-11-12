@@ -1,6 +1,5 @@
 package com.echaris.api.commitment.request;
 
-import com.echaris.api.payment.Transaction;
 import com.echaris.api.payment.TransactionPurpose;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,6 +21,10 @@ public record WithdrawalRequest(
 
         @NotBlank
         @Pattern(regexp = "[0-9]{10}")
-        String accountNumber
+        String accountNumber,
+
+        @NotBlank
+        @Size(max = 120)
+        String accountName
 ) {
 }

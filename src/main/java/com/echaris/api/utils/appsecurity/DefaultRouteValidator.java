@@ -37,12 +37,21 @@ public class DefaultRouteValidator {
                 .toList();
     }
 
+    private static final Pattern PRODUCT_CATALOG =
+            route("/api/v1/product/private/catalog");
+
+    private static final Pattern PRIVATE_ADDRESSES =
+            route("/api/v1/addresses/private");
+
     public static final List<Pattern> ADMIN_ENDPOINTS =
             routes(
                     "/api/v1/commitments/private/admin",
+                    "/api/v1/user-payments/private/admin",
                     "/api/v1/notifications/private",
                     "/api/v1/product/private",
                     "/api/v1/admin/private",
+                    "/api/v1/account-details/private/admin",
+                    "/api/v1/addresses/private",
                     "/api/v1/customer/private/admin",
                     "/api/v1/vendor/private/admin",
                     "/api/v1/files/private",
@@ -61,6 +70,19 @@ public class DefaultRouteValidator {
     public Predicate<HttpServletRequest> isCustomerSecured =
             req -> {
                 String uri = req.getRequestURI();
+
+                if (uri.equals("/api/v1/user-payments/private")) {
+                    return true;
+                }
+
+                if (PRIVATE_ADDRESSES.matcher(uri).matches()) {
+                    return true;
+                }
+
+                if ("GET".equals(req.getMethod())
+                        && PRODUCT_CATALOG.matcher(uri).matches()) {
+                    return true;
+                }
 
                 if (uri.equals(
                         "/api/v1/commitments/private"

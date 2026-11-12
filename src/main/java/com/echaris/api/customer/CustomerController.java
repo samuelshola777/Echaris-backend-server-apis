@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/customer")
 @RequiredArgsConstructor
@@ -24,17 +26,17 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @PostMapping("/public/register")
-    public ResponseEntity<ApiResponse> register(
+    public ResponseEntity<ApiResponse<Map<String, String>>> register(
             @Valid @RequestBody CustomerCreateRequest request
     ) {
-        customerService.register(request);
+        String referralCode = customerService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(
                         new ApiResponse<>(
                                 true,
                                 "Customer account created. Check your email for the verification OTP",
-                                null
+                                Map.of("referralCode", referralCode)
                         )
                 );
     }
@@ -129,6 +131,20 @@ public class CustomerController {
                         true,
                         "Customer profile retrieved successfully",
                         customerService.getCurrentProfile()
+                )
+        );
+    }
+
+    @GetMapping("/private/referrals")
+    public ResponseEntity<ApiResponse<PaginatedData>> getVerifiedReferrals(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Verified referrals retrieved successfully",
+                        customerService.getVerifiedReferrals(page, size)
                 )
         );
     }

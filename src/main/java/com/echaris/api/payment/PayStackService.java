@@ -188,6 +188,7 @@ public class PayStackService {
                     errorResponse =
                             exception.getResponseBodyAs(RESPONSE_TYPE);
                 } catch (RuntimeException ignored) {
+                    System.out.println(ignored.getMessage()+"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
                     // Unknown responses do not prove payment failure.
                 }
 
@@ -205,6 +206,7 @@ public class PayStackService {
             );
 
         } catch (RestClientException exception) {
+            System.out.println(exception.getMessage()+"<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             throw new InvalidOperationException(
                     "Unable to communicate with Paystack. "
                             + "Payment status is unconfirmed."

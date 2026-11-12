@@ -7,6 +7,7 @@ import com.echaris.api.customer.request.*;
 import com.echaris.api.customer.response.CustomerAuthResponse;
 import com.echaris.api.customer.response.CustomerForgotPasswordResponse;
 import com.echaris.api.customer.response.CustomerKycResponse;
+import com.echaris.api.customer.response.CustomerReferralResponse;
 import com.echaris.api.customer.response.CustomerResponse;
 import com.echaris.api.userauthmgt.user.User;
 import com.echaris.api.userauthmgt.user.UserService;
@@ -27,12 +28,19 @@ import com.echaris.api.utils.emailsenderservice.EmailSenderService;
 import com.echaris.api.utils.exception.*;
 import com.echaris.api.utils.fileupload.FileUploadService;
 import com.echaris.api.utils.fileupload.ManagedFile;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.CompoundIndexDefinition;
+import org.springframework.data.mongodb.core.index.Index;
+import org.springframework.data.mongodb.core.index.PartialIndexFilter;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -43,6 +51,7 @@ import org.springframework.util.StringUtils;
 
 import java.net.URI;
 import java.security.InvalidParameterException;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -54,6 +63,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class CustomerService {
+
+    private static final SecureRandom REFERRAL_CODE_RANDOM = new SecureRandom();
 
     private final CustomerRepository customerRepository;
     private final UserService userService;
@@ -67,8 +78,46 @@ public class CustomerService {
     private final AdminRepository adminRepository;
     private final jakarta.servlet.http.HttpServletRequest httpServletRequest;
 
+    @PostConstruct
+    public void initializeReferrals() {
+        var indexes = mongoTemplate.indexOps(Customer.class);
+        indexes.createIndex(new Index()
+                .on("referralCode", Sort.Direction.ASC)
+                .unique()
+                .partial(PartialIndexFilter.of(new Document("referralCode", new Document("$type", "string"))))
+                .named("uq_customer_referral_code"));
+        indexes.createIndex(new CompoundIndexDefinition(new Document("referredByUserId", 1)
+                .append("referralVerifiedAt", -1)
+                .append("_id", 1))
+                .named("ix_customer_verified_referrals"));
+
+        Query missingCodes = Query.query(Criteria.where("referralCode").in(null, ""));
+        missingCodes.with(Sort.by("id"));
+        missingCodes.fields().include("id");
+        try (var customers = mongoTemplate.stream(missingCodes, Customer.class)) {
+            customers.forEach(customer -> assignMissingReferralCode(customer.getId()));
+        }
+    }
+
+    private void assignMissingReferralCode(String customerId) {
+        // The conditional update preserves codes assigned by another app instance.
+        Query customerWithoutCode = Query.query(Criteria.where("id").is(customerId)
+                .and("referralCode").in(null, ""));
+        for (int attempt = 1; ; attempt++) {
+            try {
+                mongoTemplate.updateFirst(customerWithoutCode,
+                        new Update().set("referralCode", generateReferralCode()), Customer.class);
+                return;
+            } catch (DuplicateKeyException exception) {
+                if (attempt == 3) {
+                    throw exception;
+                }
+            }
+        }
+    }
+
     @Transactional
-    public void register(CustomerCreateRequest request) {
+    public String register(CustomerCreateRequest request) {
         if (request == null) {
             throw new InvalidInputException("Request body is required");
         }
@@ -83,6 +132,7 @@ public class CustomerService {
         );
 
         validatePassword(request.password());
+        String referredByUserId = resolveReferrerUserId(request.referralCode());
 
         UserCreateResponse createdUser = userService.createUser(
                 UserCreateRequest.builder()
@@ -102,6 +152,8 @@ public class CustomerService {
         Customer customer = Customer.builder()
                 .userId(savedUser.getId())
                 .customerNumber(generateCustomerNumber())
+                .referralCode(generateReferralCode())
+                .referredByUserId(referredByUserId)
                 .active(false)
                 .deleted(false)
                 .lastLoginAt(null)
@@ -126,6 +178,8 @@ public class CustomerService {
                 "Customer registration completed; email verification is required for email: {}",
                 savedUser.getEmailAddress()
         );
+
+        return customer.getReferralCode();
     }
 
     @Transactional
@@ -165,6 +219,9 @@ public class CustomerService {
 
         customer.setActive(true);
         customer.setUpdatedAt(LocalDateTime.now());
+        if (customer.getReferredByUserId() != null && customer.getReferralVerifiedAt() == null) {
+            customer.setReferralVerifiedAt(savedUser.getVerifiedAt());
+        }
 
         Customer savedCustomer = customerRepository.save(customer);
 
@@ -392,6 +449,28 @@ public class CustomerService {
         }
 
         return CustomerResponse.from(customer, user);
+    }
+
+    public PaginatedData getVerifiedReferrals(int page, int size) {
+        validatePagination(page, size);
+        if (size < 1 || size > 100) {
+            throw new InvalidInputException("Page size must be between 1 and 100");
+        }
+
+        CustomerResponse profile = getCurrentProfile();
+        if (!profile.active() || !profile.verified()) {
+            throw new UnauthorizedException("An active, verified customer account is required");
+        }
+
+        Page<Customer> referrals = customerRepository.findAllByReferredByUserIdAndReferralVerifiedAtIsNotNull(
+                profile.userId(),
+                PageRequest.of(page - 1, size, Sort.by(Sort.Order.desc("referralVerifiedAt"), Sort.Order.asc("id")))
+        );
+        List<CustomerReferralResponse> rows = referrals.getContent().stream()
+                .map(customer -> new CustomerReferralResponse(customer.getId(), customer.getReferralVerifiedAt()))
+                .toList();
+
+        return utilsService.createPaginatedData(rows, page, size, referrals.getTotalElements());
     }
 
     @Transactional
@@ -1597,6 +1676,40 @@ public class CustomerService {
         claims.put("auth", List.of("ROLE_CUSTOMER"));
 
         return claims;
+    }
+
+    private String generateReferralCode() {
+        byte[] bytes = new byte[8];
+        REFERRAL_CODE_RANDOM.nextBytes(bytes);
+        return "ECH-" + HexFormat.of().withUpperCase().formatHex(bytes);
+    }
+
+    private String resolveReferrerUserId(String referralCode) {
+        if (!StringUtils.hasText(referralCode)) {
+            return null;
+        }
+
+        String code = referralCode.strip().toUpperCase(Locale.ROOT);
+        if (!code.matches("ECH-[0-9A-F]{16}")) {
+            throw new InvalidInputException("Invalid referral code");
+        }
+
+        Customer referrer = customerRepository.findByReferralCodeAndActiveTrueAndDeletedFalse(code)
+                .orElseThrow(() -> new InvalidInputException("Invalid referral code"));
+
+        User referrerUser;
+        try {
+            referrerUser = userService.findById(referrer.getUserId());
+        } catch (ResourceNotFoundException exception) {
+            throw new InvalidInputException("Invalid referral code");
+        }
+
+        if (referrerUser.getUserType() != UserType.CUSTOMER || referrerUser.isDeleted()
+                || !referrerUser.isActive() || !referrerUser.isVerified()) {
+            throw new InvalidInputException("Invalid referral code");
+        }
+
+        return referrer.getUserId();
     }
 
     private String generateCustomerNumber() {

@@ -24,7 +24,7 @@ public class AddressController {
 
     private final AddressService addressService;
 
-    @PostMapping("/private/create-or-update")
+    @PostMapping({"/private", "/private/create-or-update"})
     public ApiResponse<AddressResponse> createOrUpdateAddress(
             @Valid @RequestBody AddressRequest request
     ) {
@@ -48,13 +48,14 @@ public class AddressController {
 
     @GetMapping("/private")
     public ApiResponse<List<AddressResponse>> getAddresses(
+            @RequestParam(required = false) AddressType addressType,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return new ApiResponse<>(
                 true,
                 "Addresses retrieved successfully",
-                addressService.getAddresses(page, size)
+                addressService.getAddresses(addressType, page, size)
         );
     }
 

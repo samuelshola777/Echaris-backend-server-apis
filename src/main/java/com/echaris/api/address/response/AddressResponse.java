@@ -1,10 +1,12 @@
 package com.echaris.api.address.response;
 
 import com.echaris.api.address.Address;
+import com.echaris.api.address.AddressType;
 
 public record AddressResponse(
         String addressId,
         String userId,
+        AddressType addressType,
         String country,
         String state,
         String city,
@@ -17,6 +19,7 @@ public record AddressResponse(
         return new AddressResponse(
                 address.getId(),
                 address.getUserId(),
+                address.getAddressType() == null ? AddressType.DELIVERY : address.getAddressType(),
                 address.getCountry(),
                 address.getState(),
                 address.getCity(),

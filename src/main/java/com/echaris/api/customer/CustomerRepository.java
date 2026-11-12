@@ -15,6 +15,13 @@ public interface CustomerRepository extends MongoRepository<Customer, String> {
 
     Optional<Customer> findByUserIdAndDeletedFalse(String userId);
 
+    Optional<Customer> findByReferralCodeAndActiveTrueAndDeletedFalse(String referralCode);
+
+    Page<Customer> findAllByReferredByUserIdAndReferralVerifiedAtIsNotNull(
+            String referredByUserId,
+            Pageable pageable
+    );
+
     Page<Customer> findAllByDeletedFalse(Pageable pageable);
 
     boolean existsByUserId(String userId);

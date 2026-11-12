@@ -28,6 +28,6 @@ public record CustomerCreateRequest(
 
         @AssertTrue(message = "You must accept the consent to create an account")
         boolean acceptedConsent,
-        String referralCode
+        @Size(max = 64) String referralCode
 ) {
 }

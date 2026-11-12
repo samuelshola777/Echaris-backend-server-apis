@@ -17,6 +17,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Address extends BaseEntity {
 
     private String userId;
+    private AddressType addressType;
     private String country;
     private String state;
     private String city;

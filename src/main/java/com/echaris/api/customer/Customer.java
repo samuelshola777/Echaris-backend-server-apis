@@ -23,6 +23,9 @@ public class Customer extends BaseEntity {
 
     @Indexed(unique = true)
     private String customerNumber;
+    private String referralCode;
+    private String referredByUserId;
+    private LocalDateTime referralVerifiedAt;
 
     private boolean active;
     private boolean deleted;
