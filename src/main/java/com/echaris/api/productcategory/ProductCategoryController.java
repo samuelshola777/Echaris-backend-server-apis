@@ -37,6 +37,13 @@ public class ProductCategoryController {
     }
 
     @GetMapping("/private/categories/{categoryId}")
+    public ApiResponse<ProductCategory> getAvailable(@PathVariable String categoryId) {
+        return new ApiResponse<>(
+                true, "Product category retrieved", categoryService.getAvailable(categoryId)
+        );
+    }
+
+    @GetMapping("/private/admin/categories/{categoryId}")
     public ApiResponse<ProductCategory> get(@PathVariable String categoryId) {
         return new ApiResponse<>(
                 true, "Product category retrieved", categoryService.get(categoryId)

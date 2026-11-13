@@ -33,9 +33,7 @@ public class OpenAPIConfig {
                                 .addSecuritySchemes(
                                         "BearerAuth",
                                         new SecurityScheme()
-                                                .type(
-                                                        SecurityScheme.Type.HTTP
-                                                )
+                                                .type(SecurityScheme.Type.HTTP)
                                                 .scheme("bearer")
                                                 .bearerFormat("JWT")
                                                 .description(
@@ -46,16 +44,10 @@ public class OpenAPIConfig {
                                 .addSecuritySchemes(
                                         "ApiKeyAuth",
                                         new SecurityScheme()
-                                                .type(
-                                                        SecurityScheme.Type.APIKEY
-                                                )
-                                                .in(
-                                                        SecurityScheme.In.HEADER
-                                                )
+                                                .type(SecurityScheme.Type.APIKEY)
+                                                .in(SecurityScheme.In.HEADER)
                                                 .name("X-Api-Key")
-                                                .description(
-                                                        "Enter the API_KEY from env.properties."
-                                                )
+                                                .description("Enter the API_KEY from env.properties.")
                                 )
                 )
                 .addSecurityItem(privateSecurity());
@@ -69,21 +61,17 @@ public class OpenAPIConfig {
             }
 
             api.getPaths().forEach((path, item) ->
-                    item.readOperations().forEach(operation -> {
+                    item.readOperationsMap().forEach((method, operation) -> {
                         boolean publicEndpoint =
                                 path.endsWith("/public")
-                                        || path.contains("/public/");
+                                        || path.contains("/public/")
+                                        || RouteValidator.isPublicProductRead(method.name(), path);
 
-                        operation.setSecurity(
-                                publicEndpoint
-                                        ? List.of()
-                                        : List.of(privateSecurity())
-                        );
+                        operation.setSecurity(publicEndpoint ? List.of() : List.of(privateSecurity()));
 
                         if ("/api/v1/admin/public/login".equals(path)
                                 && operation.getRequestBody() != null
-                                && operation.getRequestBody()
-                                .getContent() != null) {
+                                && operation.getRequestBody().getContent() != null) {
 
                             var json = operation.getRequestBody()
                                     .getContent()
@@ -92,10 +80,8 @@ public class OpenAPIConfig {
                             if (json != null) {
                                 json.setExample(
                                         Map.of(
-                                                "emailAddress",
-                                                "admin@example.com",
-                                                "password",
-                                                "your-admin-password"
+                                                "emailAddress", "admin@example.com",
+                                                "password", "your-admin-password"
                                         )
                                 );
                             }

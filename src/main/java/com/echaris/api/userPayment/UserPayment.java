@@ -20,15 +20,22 @@ public class UserPayment extends BaseEntity {
 
     private String userId;
     private UserPaymentPurpose purpose;
+    private UserPaymentDirection direction;
+    private UserPaymentPayoutType payoutType;
     private String targetId;
 
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal amount;
 
+    private String bankName;
+    private String accountName;
+    private String accountNumber;
+
     private List<String> receiptUrls = List.of();
     private String transferReference;
     private UserPaymentStatus status = UserPaymentStatus.PENDING;
 
+    private String recordedByUserId;
     private String reviewedByUserId;
     private Instant reviewedAt;
     private Instant paidAt;

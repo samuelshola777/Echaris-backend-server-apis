@@ -49,6 +49,16 @@ public class ProductCategoryService {
         return categoryRepository.findAllByOrderByNameAsc();
     }
 
+    public ProductCategory getAvailable(String categoryId) {
+        ProductCategory category = find(categoryId);
+
+        if (!category.isActive()) {
+            throw new ResourceNotFoundException("Product category not found");
+        }
+
+        return category;
+    }
+
     public ProductCategory get(String categoryId) {
         adminService.getCurrentAdminProfile();
 

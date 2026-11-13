@@ -43,6 +43,9 @@ public class DefaultRouteValidator {
     private static final Pattern PRIVATE_ADDRESSES =
             route("/api/v1/addresses/private");
 
+    private static final Pattern PRIVATE_CART =
+            route("/api/v1/cart/private");
+
     public static final List<Pattern> ADMIN_ENDPOINTS =
             routes(
                     "/api/v1/commitments/private/admin",
@@ -75,12 +78,17 @@ public class DefaultRouteValidator {
                     return true;
                 }
 
-                if (PRIVATE_ADDRESSES.matcher(uri).matches()) {
+                if (PRIVATE_ADDRESSES.matcher(uri).matches() || PRIVATE_CART.matcher(uri).matches()) {
                     return true;
                 }
 
                 if ("GET".equals(req.getMethod())
                         && PRODUCT_CATALOG.matcher(uri).matches()) {
+                    return true;
+                }
+
+                if ("POST".equals(req.getMethod())
+                        && uri.equals("/api/v1/product/private/catalog/filter")) {
                     return true;
                 }
 

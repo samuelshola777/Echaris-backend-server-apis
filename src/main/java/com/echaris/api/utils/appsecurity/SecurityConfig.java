@@ -41,42 +41,25 @@ public class SecurityConfig {
         this.authEntryPoint = authEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
 
-        log.info(
-                "SecurityConfig dependencies initialized"
-        );
+        log.info("SecurityConfig dependencies initialized");
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
-        log.info(
-                "Configuring Spring Security Filter Chain"
-        );
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        log.info("Configuring Spring Security Filter Chain");
 
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors ->
-                        cors.configurationSource(
-                                corsConfigurationSource()
-                        )
-                )
-                .sessionManagement(sm ->
-                        sm.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
-                )
-                .exceptionHandling(eh ->
-                        eh.authenticationEntryPoint(authEntryPoint)
-                                .accessDeniedHandler(
-                                        accessDeniedHandler
-                                )
-                )
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(eh -> eh.authenticationEntryPoint(authEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers(
-                                        HttpMethod.OPTIONS,
-                                        "/**"
-                                )
+                        auth.requestMatchers(HttpMethod.OPTIONS, "/**")
+                                .permitAll()
+                                .requestMatchers(request -> RouteValidator.isPublicProductRead(
+                                        request.getMethod(), request.getRequestURI()
+                                ))
                                 .permitAll()
                                 .requestMatchers(
                                         "/api/v1/commitments/public/paystack/webhook",
@@ -106,14 +89,8 @@ public class SecurityConfig {
                                 .anyRequest()
                                 .authenticated()
                 )
-                .addFilterBefore(
-                        apiSecurityFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .addFilterAfter(
-                        jwtFilter,
-                        ApiSecurityFilter.class
-                );
+                .addFilterBefore(apiSecurityFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtFilter, ApiSecurityFilter.class);
 
         SecurityFilterChain chain = http.build();
 
@@ -125,107 +102,45 @@ public class SecurityConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<ApiSecurityFilter>
-    apiSecurityRegistration() {
-        var registration =
-                new FilterRegistrationBean<>(
-                        apiSecurityFilter
-                );
-
+    public FilterRegistrationBean<ApiSecurityFilter> apiSecurityRegistration() {
+        var registration = new FilterRegistrationBean<>(apiSecurityFilter);
         registration.setEnabled(false);
-
         return registration;
     }
 
     @Bean
-    public FilterRegistrationBean<JwtFilter>
-    jwtRegistration() {
-        var registration =
-                new FilterRegistrationBean<>(
-                        jwtFilter
-                );
-
+    public FilterRegistrationBean<JwtFilter> jwtRegistration() {
+        var registration = new FilterRegistrationBean<>(jwtFilter);
         registration.setEnabled(false);
-
         return registration;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration cfg
-    ) throws Exception {
-        log.info(
-                "Initializing AuthenticationManager bean"
-        );
-
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
+        log.info("Initializing AuthenticationManager bean");
         return cfg.getAuthenticationManager();
     }
 
     @Bean
-    public CorsConfigurationSource
-    corsConfigurationSource() {
-        log.info(
-                "Configuring CORS rules for API and WebSocket endpoints"
-        );
+    public CorsConfigurationSource corsConfigurationSource() {
+        log.info("Configuring CORS rules for API and WebSocket endpoints");
 
-        CorsConfiguration apiCors =
-                new CorsConfiguration();
-
-        apiCors.setAllowedOriginPatterns(
-                Arrays.asList("*")
-        );
-
-        apiCors.setAllowedMethods(
-                Arrays.asList(
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "DELETE",
-                        "OPTIONS",
-                        "PATCH"
-                )
-        );
-
-        apiCors.setAllowedHeaders(
-                Arrays.asList("*")
-        );
-
+        CorsConfiguration apiCors = new CorsConfiguration();
+        apiCors.setAllowedOriginPatterns(Arrays.asList("*"));
+        apiCors.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        apiCors.setAllowedHeaders(Arrays.asList("*"));
         apiCors.setAllowCredentials(true);
 
-        CorsConfiguration wsCors =
-                new CorsConfiguration();
-
-        wsCors.setAllowedOriginPatterns(
-                Arrays.asList("*")
-        );
-
-        wsCors.setAllowedMethods(
-                Arrays.asList("GET", "OPTIONS")
-        );
-
-        wsCors.setAllowedHeaders(
-                Arrays.asList("*")
-        );
-
+        CorsConfiguration wsCors = new CorsConfiguration();
+        wsCors.setAllowedOriginPatterns(Arrays.asList("*"));
+        wsCors.setAllowedMethods(Arrays.asList("GET", "OPTIONS"));
+        wsCors.setAllowedHeaders(Arrays.asList("*"));
         wsCors.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource src =
-                new UrlBasedCorsConfigurationSource();
-
-        src.registerCorsConfiguration(
-                "/api/**",
-                apiCors
-        );
-
-        src.registerCorsConfiguration(
-                "/ws/**",
-                wsCors
-        );
-
-        src.registerCorsConfiguration(
-                "/ws-sockjs/**",
-                wsCors
-        );
+        UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
+        src.registerCorsConfiguration("/api/**", apiCors);
+        src.registerCorsConfiguration("/ws/**", wsCors);
+        src.registerCorsConfiguration("/ws-sockjs/**", wsCors);
 
         return src;
     }

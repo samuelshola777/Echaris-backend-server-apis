@@ -1,15 +1,25 @@
 package com.echaris.api.userPayment;
 
+import com.echaris.api.admin.Admin;
+import com.echaris.api.admin.AdminRepository;
 import com.echaris.api.commitment.Commitment;
+import com.echaris.api.commitment.CommitmentReturn;
+import com.echaris.api.commitment.CommitmentReturnStatus;
 import com.echaris.api.commitment.CommitmentRules;
 import com.echaris.api.commitment.CommitmentService;
 import com.echaris.api.commitment.CommitmentStatus;
+import com.echaris.api.notification.NotificationService;
+import com.echaris.api.payoutaccount.CustomerPayoutAccount;
+import com.echaris.api.payoutaccount.response.CustomerPayoutAccountResponse;
 import com.echaris.api.userPayment.request.UserPaymentApprovalRequest;
+import com.echaris.api.userPayment.request.UserPaymentPayoutRequest;
 import com.echaris.api.userPayment.request.UserPaymentRequest;
 import com.echaris.api.userauthmgt.user.User;
+import com.echaris.api.userauthmgt.user.UserRepository;
 import com.echaris.api.userauthmgt.user.UserType;
 import com.echaris.api.utils.PaginatedData;
 import com.echaris.api.utils.UtilsService;
+import com.echaris.api.utils.emailsenderservice.EmailSenderService;
 import com.echaris.api.utils.exception.InvalidInputException;
 import com.echaris.api.utils.exception.InvalidOperationException;
 import com.echaris.api.utils.exception.ResourceExistsException;
@@ -20,12 +30,14 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.PartialIndexFilter;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,17 +46,27 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class UserPaymentService {
 
+    private static final String PAYMENT_REFERENCE = "USER_PAYMENT";
+
     private final MongoTemplate mongoTemplate;
     private final CommitmentService commitmentService;
     private final ManagedFileRepository managedFileRepository;
     private final UtilsService utilsService;
+    private final AdminRepository adminRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final EmailSenderService emailSenderService;
 
     @PostConstruct
     public void createIndexes() {
@@ -56,10 +78,26 @@ public class UserPaymentService {
                 .named("uq_user_payment_bank_credit"));
         indexes.createIndex(new Index().on("userId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
         indexes.createIndex(new Index().on("status", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
+
+        backfillDirection(UserPaymentDirection.INCOMING, UserPaymentPurpose.COMMITMENT, UserPaymentPurpose.ORDER);
+        backfillDirection(UserPaymentDirection.OUTGOING, UserPaymentPurpose.CUSTOMER_PAYOUT);
+        indexes.createIndex(new Index().on("direction", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
+        indexes.createIndex(new Index()
+                .on("transferReference", Sort.Direction.ASC)
+                .unique()
+                .partial(PartialIndexFilter.of(new Document("direction", UserPaymentDirection.OUTGOING.name())
+                        .append("transferReference", new Document("$type", "string"))))
+                .named("uq_user_payment_payout_reference"));
     }
 
+    private void backfillDirection(UserPaymentDirection direction, UserPaymentPurpose... purposes) {
+        Query query = Query.query(Criteria.where("direction").is(null).and("purpose").in(purposes));
+        mongoTemplate.updateMulti(query, new Update().set("direction", direction), UserPayment.class);
+    }
+
+    @Transactional
     public UserPayment submit(UserPaymentRequest request) {
-        String userId = requireCustomerId();
+        User customer = requireCustomer();
         requireCommitmentPurpose(request.purpose());
         Commitment commitment = commitmentService.get(request.targetId().strip());
         BigDecimal amount = BigDecimal.valueOf(CommitmentRules.kobo(request.amount()), 2);
@@ -73,23 +111,162 @@ public class UserPaymentService {
 
         UserPayment payment = new UserPayment();
         payment.setId(UUID.randomUUID().toString());
-        payment.setUserId(userId);
+        payment.setUserId(customer.getId());
         payment.setPurpose(request.purpose());
+        payment.setDirection(UserPaymentDirection.INCOMING);
         payment.setTargetId(commitment.getId());
         payment.setAmount(amount);
+        payment.setBankName(request.bankName().strip());
+        payment.setAccountName(request.accountName().strip());
+        payment.setAccountNumber(request.accountNumber());
         payment.setReceiptUrls(request.receiptUrls().stream().map(this::requireReceiptUrl).distinct().toList());
+
         String reference = request.transferReference();
         payment.setTransferReference(reference == null || reference.isBlank() ? null : reference.strip());
-        return mongoTemplate.insert(payment);
+
+        UserPayment saved = mongoTemplate.insert(payment);
+        String commitmentName = commitment.getName();
+        notifyAdminsOfSubmission(saved, customer, commitmentName);
+        notifyCustomer(saved, commitmentName, "USER_PAYMENT_UNDER_REVIEW", "Payment under review",
+                "We received your %s. An admin will review your receipt."
+                        .formatted(paymentDescription(saved, commitmentName)));
+        return saved;
     }
 
-    public PaginatedData getMyPayments(int page, int size) {
-        return page(Criteria.where("userId").is(requireCustomerId()), page, size);
-    }
-
-    public PaginatedData getAdminPayments(UserPaymentStatus status, int page, int size) {
+    public CustomerPayoutAccountResponse getPayoutAccount(String customerUserId) {
         commitmentService.requireAdmin();
-        return page(Criteria.where("status").is(status), page, size);
+        User customer = requirePayoutCustomer(customerUserId);
+        return CustomerPayoutAccountResponse.from(requirePayoutAccount(customer.getId()));
+    }
+
+    @Transactional
+    public UserPayment recordPayout(UserPaymentPayoutRequest request) {
+        User admin = commitmentService.requireAdmin();
+        User customer = requirePayoutCustomer(request.customerUserId());
+        CustomerPayoutAccount account = requirePayoutAccount(customer.getId());
+        if (!Objects.equals(account.getVersion(), request.payoutAccountVersion())) {
+            throw new OptimisticLockingFailureException("The payout account changed");
+        }
+        var details = account.getDetails();
+        Instant now = Instant.now();
+        if (request.paidAt().isAfter(now)) {
+            throw new InvalidInputException("Payout time cannot be in the future");
+        }
+
+        UserPayment payment = new UserPayment();
+        payment.setId(UUID.randomUUID().toString());
+        payment.setUserId(customer.getId());
+        payment.setPurpose(UserPaymentPurpose.CUSTOMER_PAYOUT);
+        payment.setPayoutType(request.payoutType());
+        payment.setTargetId(request.targetId().strip());
+        payment.setDirection(UserPaymentDirection.OUTGOING);
+        payment.setStatus(UserPaymentStatus.PAID);
+        payment.setAmount(BigDecimal.valueOf(CommitmentRules.kobo(request.amount()), 2));
+        payment.setBankName(details.bankName());
+        payment.setAccountName(details.accountName());
+        payment.setAccountNumber(details.accountNumber());
+        payment.setReceiptUrls(request.receiptUrls().stream().map(this::requireReceiptUrl).distinct().toList());
+        payment.setTransferReference(request.transferReference().strip());
+        payment.setPaidAt(request.paidAt().truncatedTo(ChronoUnit.MILLIS));
+        payment.setRecordedByUserId(admin.getId());
+
+        UserPayment saved;
+        try {
+            saved = mongoTemplate.insert(payment);
+        } catch (DuplicateKeyException exception) {
+            throw new ResourceExistsException("This payout transfer reference has already been recorded");
+        }
+
+        switch (saved.getPayoutType()) {
+            case COMMITMENT_CAPITAL -> settleCapitalPayout(saved);
+            case COMMITMENT_RETURN -> settleReturnPayout(saved);
+        }
+
+        notifyPayoutCustomer(saved, customer);
+        return saved;
+    }
+
+    private void settleCapitalPayout(UserPayment payment) {
+        Commitment commitment = requirePayoutCommitment(payment.getTargetId(), payment);
+        if (commitment.getStatus() == CommitmentStatus.WITHDRAWN
+                || commitment.getCapitalWithdrawnAt() != null
+                || !CommitmentRules.matured(commitment.getMaturityAt(), payment.getPaidAt())) {
+            throw new InvalidOperationException("Commitment capital has not matured or was already paid out");
+        }
+        requirePayoutAmount(payment, commitment.getCapital());
+
+        commitment.setStatus(CommitmentStatus.WITHDRAWN);
+        commitment.setCapitalWithdrawnAt(payment.getPaidAt());
+        commitment.setUpdatedAt(LocalDateTime.now());
+        mongoTemplate.save(commitment);
+    }
+
+    private void settleReturnPayout(UserPayment payment) {
+        Query query = Query.query(Criteria.where("id").is(payment.getTargetId())
+                .and("userId").is(payment.getUserId()));
+        CommitmentReturn installment = mongoTemplate.findOne(query, CommitmentReturn.class);
+        if (installment == null) {
+            throw new ResourceNotFoundException("Commitment return not found for this customer");
+        }
+        Commitment commitment = requirePayoutCommitment(installment.getCommitmentId(), payment);
+        if (installment.getStatus() != CommitmentReturnStatus.AVAILABLE
+                || installment.getTransactionId() != null) {
+            throw new InvalidOperationException("Commitment return is already paid or reserved");
+        }
+        requirePayoutAmount(payment, installment.getAmount());
+
+        // Update the versioned parent, which the automated withdrawal flow also writes.
+        commitment.setUpdatedAt(LocalDateTime.now());
+        mongoTemplate.save(commitment);
+        installment.setStatus(CommitmentReturnStatus.PAID);
+        installment.setUpdatedAt(LocalDateTime.now());
+        mongoTemplate.save(installment);
+    }
+
+    private Commitment requirePayoutCommitment(String commitmentId, UserPayment payment) {
+        Query query = Query.query(Criteria.where("id").is(commitmentId)
+                .and("userId").is(payment.getUserId()));
+        Commitment commitment = mongoTemplate.findOne(query, Commitment.class);
+        if (commitment == null) {
+            throw new ResourceNotFoundException("Commitment not found for this customer");
+        }
+        if (commitment.getFundedAt() == null
+                || commitment.getStatus() == CommitmentStatus.AWAITING_PAYMENT
+                || commitment.getStatus() == CommitmentStatus.REVIEW_REQUIRED
+                || commitment.getActiveTransactionId() != null) {
+            throw new InvalidOperationException("Commitment is unavailable or has a transaction in progress");
+        }
+        if (payment.getPaidAt().isBefore(commitment.getFundedAt())) {
+            throw new InvalidInputException("Payout time cannot precede commitment funding");
+        }
+        return commitment;
+    }
+
+    private void requirePayoutAmount(UserPayment payment, BigDecimal expectedAmount) {
+        if (expectedAmount == null || payment.getAmount().compareTo(expectedAmount) != 0) {
+            throw new InvalidInputException("Payout amount must match the amount due");
+        }
+    }
+
+    public PaginatedData getMyPayments(
+            String search, UserPaymentStatus status, UserPaymentDirection direction,
+            UserPaymentPurpose purpose, int page, int size
+    ) {
+        String userId = requireCustomer().getId();
+        return page(paymentQuery(search, status, direction, purpose, userId), page, size);
+    }
+
+    public PaginatedData getAdminPayments(
+            String search, UserPaymentStatus status, UserPaymentDirection direction,
+            UserPaymentPurpose purpose, String customerUserId, int page, int size
+    ) {
+        commitmentService.requireAdmin();
+        return page(paymentQuery(search, status, direction, purpose, customerUserId), page, size);
+    }
+
+    public UserPayment getAdminPayment(String paymentId) {
+        commitmentService.requireAdmin();
+        return requirePayment(paymentId);
     }
 
     @Transactional
@@ -100,25 +277,30 @@ public class UserPaymentService {
         String bankCreditId = request.bankCreditId().strip();
         BigDecimal verifiedAmount = BigDecimal.valueOf(CommitmentRules.kobo(request.verifiedAmount()), 2);
         Instant reviewedAt = Instant.now();
+
         if (request.paidAt().isAfter(reviewedAt)) {
             throw new InvalidInputException("Bank credit time cannot be in the future");
         }
+
         Instant paidAt = request.paidAt().truncatedTo(ChronoUnit.MILLIS);
 
         if (verifiedAmount.compareTo(payment.getAmount()) != 0) {
             throw new InvalidOperationException("The verified bank amount does not match the submitted amount");
         }
-        if (payment.getStatus() == UserPaymentStatus.APPROVED  && bankCreditId.equals(payment.getBankCreditId()) && paidAt.equals(payment.getPaidAt())) {
+        if (payment.getStatus() == UserPaymentStatus.APPROVED
+                && bankCreditId.equals(payment.getBankCreditId())
+                && paidAt.equals(payment.getPaidAt())) {
             return payment;
         }
-        requirePending(payment);
 
+        requirePending(payment);
         payment.setStatus(UserPaymentStatus.APPROVED);
         payment.setBankCreditId(bankCreditId);
         payment.setPaidAt(paidAt);
         payment.setReviewedByUserId(admin.getId());
         payment.setReviewedAt(reviewedAt);
         payment.setUpdatedAt(LocalDateTime.now());
+
         UserPayment saved;
         try {
             saved = mongoTemplate.save(payment);
@@ -130,29 +312,179 @@ public class UserPaymentService {
                 saved.getTargetId(), saved.getUserId(), saved.getAmount(),
                 saved.getId(), paidAt, admin.getId()
         );
+
+        String commitmentName = findCommitmentName(saved);
+        notifyCustomer(saved, commitmentName, "USER_PAYMENT_APPROVED", "Payment approved",
+                "Your %s was approved. Your commitment is now funded."
+                        .formatted(paymentDescription(saved, commitmentName)));
         return saved;
     }
 
+    @Transactional
     public UserPayment reject(String paymentId) {
         User admin = commitmentService.requireAdmin();
         UserPayment payment = requirePayment(paymentId);
+        requireIncomingPayment(payment.getPurpose());
+
         if (payment.getStatus() == UserPaymentStatus.REJECTED) {
             return payment;
         }
+
         requirePending(payment);
         payment.setStatus(UserPaymentStatus.REJECTED);
         payment.setReviewedByUserId(admin.getId());
         payment.setReviewedAt(Instant.now());
         payment.setUpdatedAt(LocalDateTime.now());
-        return mongoTemplate.save(payment);
+
+        UserPayment saved = mongoTemplate.save(payment);
+        String commitmentName = findCommitmentName(saved);
+        notifyCustomer(saved, commitmentName, "USER_PAYMENT_REJECTED", "Payment rejected",
+                "Your %s was rejected. Check your payment details before submitting another receipt."
+                        .formatted(paymentDescription(saved, commitmentName)));
+        return saved;
     }
 
-    private String requireCustomerId() {
+    private void notifyPayoutCustomer(UserPayment payment, User customer) {
+        String title = "Payout sent";
+        String message = "Echaris sent your NGN %s payout on %s. Transfer reference %s."
+                .formatted(payment.getAmount().toPlainString(), payment.getPaidAt(), payment.getTransferReference());
+        Map<String, String> data = notificationData(payment, null);
+        notificationService.create(customer.getId(), "CUSTOMER_PAYOUT_PAID", title, message,
+                PAYMENT_REFERENCE, payment.getId(), data);
+
+        if (customer.getEmailAddress() != null && !customer.getEmailAddress().isBlank()) {
+            emailSenderService.sendTemplateEmailAfterCommit(customer.getEmailAddress(), title,
+                    "customer-payout-paid", data);
+        }
+    }
+
+    private void notifyAdminsOfSubmission(UserPayment payment, User customer, String commitmentName) {
+        List<String> adminUserIds = adminRepository.findAllByDeleted(false).stream()
+                .filter(Admin::isActive)
+                .map(Admin::getUserId)
+                .distinct()
+                .toList();
+
+        String title = "New payment submitted";
+        Map<String, String> data = notificationData(payment, commitmentName);
+        putIfPresent(data, "customerEmail", customer.getEmailAddress());
+        data.put("customerUserId", customer.getId());
+        data.put("receiptCount", Integer.toString(payment.getReceiptUrls().size()));
+        data.put("detailsPath", "/api/v1/user-payments/private/admin/" + payment.getId());
+
+        String customerLabel = data.getOrDefault("customerEmail", customer.getId());
+        String message = "%s submitted a %s. Open the payment details to review the receipt."
+                .formatted(customerLabel, paymentDescription(payment, commitmentName));
+
+        for (User admin : userRepository.findAllById(adminUserIds)) {
+            if (admin.getUserType() != UserType.ADMIN
+                    || !admin.isActive() || !admin.isVerified() || admin.isDeleted()) {
+                continue;
+            }
+
+            notificationService.create(admin.getId(), "USER_PAYMENT_SUBMITTED", title, message,
+                    PAYMENT_REFERENCE, payment.getId(), data);
+
+            if (admin.getEmailAddress() != null && !admin.getEmailAddress().isBlank()) {
+                emailSenderService.sendTemplateEmailAfterCommit(admin.getEmailAddress(), title,
+                        "user-payment-submitted", Map.ofEntries(
+                                Map.entry("paymentId", payment.getId()),
+                                Map.entry("customerUserId", customer.getId()),
+                                Map.entry("customerEmail", Objects.toString(customer.getEmailAddress(), "")),
+                                Map.entry("purpose", payment.getPurpose().name()),
+                                Map.entry("targetId", payment.getTargetId()),
+                                Map.entry("amount", payment.getAmount().toPlainString()),
+                                Map.entry("bankName", payment.getBankName()),
+                                Map.entry("accountName", payment.getAccountName()),
+                                Map.entry("accountNumber", payment.getAccountNumber()),
+                                Map.entry("transferReference", Objects.toString(payment.getTransferReference(), "Not supplied")),
+                                Map.entry("receiptUrls", String.join("\n", payment.getReceiptUrls())),
+                                Map.entry("status", payment.getStatus().name()),
+                                Map.entry("submittedAt", payment.getCreatedAt().toString())
+                        ));
+            }
+        }
+    }
+
+    private void notifyCustomer(
+            UserPayment payment, String commitmentName, String type, String title, String message
+    ) {
+        userRepository.findById(payment.getUserId())
+                .filter(user -> !user.isDeleted())
+                .ifPresent(user -> notificationService.create(user.getId(), type, title, message,
+                        PAYMENT_REFERENCE, payment.getId(), notificationData(payment, commitmentName)));
+    }
+
+    private Map<String, String> notificationData(UserPayment payment, String commitmentName) {
+        Map<String, String> data = new LinkedHashMap<>();
+        data.put("paymentId", payment.getId());
+        putIfPresent(data, "targetId", payment.getTargetId());
+        putIfPresent(data, "direction", Objects.toString(payment.getDirection(), null));
+        putIfPresent(data, "payoutType", Objects.toString(payment.getPayoutType(), null));
+        data.put("purpose", payment.getPurpose().name());
+        data.put("amount", payment.getAmount().toPlainString());
+        data.put("currency", "NGN");
+        data.put("status", payment.getStatus().name());
+        putIfPresent(data, "commitmentName", commitmentName);
+        putIfPresent(data, "bankName", payment.getBankName());
+        putIfPresent(data, "accountName", payment.getAccountName());
+        putIfPresent(data, "transferReference", payment.getTransferReference());
+        putIfPresent(data, "submittedAt", Objects.toString(payment.getCreatedAt(), null));
+        putIfPresent(data, "reviewedAt", Objects.toString(payment.getReviewedAt(), null));
+        putIfPresent(data, "paidAt", Objects.toString(payment.getPaidAt(), null));
+
+        String accountNumber = payment.getAccountNumber();
+        if (accountNumber != null && accountNumber.length() >= 4) {
+            data.put("accountNumberLast4", accountNumber.substring(accountNumber.length() - 4));
+        }
+
+        return data;
+    }
+
+    private String findCommitmentName(UserPayment payment) {
+        if (payment.getPurpose() != UserPaymentPurpose.COMMITMENT) {
+            return null;
+        }
+
+        Query query = Query.query(Criteria.where("id").is(payment.getTargetId())
+                .and("userId").is(payment.getUserId()));
+        Commitment commitment = mongoTemplate.findOne(query, Commitment.class);
+        return commitment == null ? null : commitment.getName();
+    }
+
+    private String paymentDescription(UserPayment payment, String commitmentName) {
+        String target = commitmentName == null || commitmentName.isBlank()
+                ? "commitment " + payment.getTargetId()
+                : "commitment \"" + commitmentName + "\"";
+        return "NGN " + payment.getAmount().toPlainString() + " payment for " + target;
+    }
+
+    private void putIfPresent(Map<String, String> data, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            data.put(key, value);
+        }
+    }
+
+    private User requirePayoutCustomer(String customerUserId) {
+        return userRepository.findByIdAndUserType(customerUserId.strip(), UserType.CUSTOMER)
+                .filter(user -> !user.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+    }
+
+    private CustomerPayoutAccount requirePayoutAccount(String customerUserId) {
+        CustomerPayoutAccount account = mongoTemplate.findById(customerUserId, CustomerPayoutAccount.class);
+        if (account == null || account.getDetails() == null) {
+            throw new ResourceNotFoundException("Customer payout account not found");
+        }
+        return account;
+    }
+
+    private User requireCustomer() {
         User user = commitmentService.currentUser();
         if (user.getUserType() != UserType.CUSTOMER) {
             throw new UnauthorizedException("Customer access is required");
         }
-        return user.getId();
+        return user;
     }
 
     private UserPayment requirePayment(String paymentId) {
@@ -170,8 +502,15 @@ public class UserPaymentService {
     }
 
     private void requireCommitmentPurpose(UserPaymentPurpose purpose) {
+        requireIncomingPayment(purpose);
         if (purpose != UserPaymentPurpose.COMMITMENT) {
             throw new InvalidOperationException("Manual order payments are not available yet");
+        }
+    }
+
+    private void requireIncomingPayment(UserPaymentPurpose purpose) {
+        if (purpose == UserPaymentPurpose.CUSTOMER_PAYOUT) {
+            throw new InvalidOperationException("Customer payouts use the admin payout endpoint");
         }
     }
 
@@ -183,6 +522,7 @@ public class UserPaymentService {
         } catch (IllegalArgumentException exception) {
             throw new InvalidInputException("Receipt URL is invalid");
         }
+
         if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null
                 || !managedFileRepository.existsByFileUrl(url)) {
             throw new InvalidInputException("Each receipt must be an uploaded HTTPS file URL");
@@ -190,15 +530,52 @@ public class UserPaymentService {
         return url;
     }
 
-    private PaginatedData page(Criteria criteria, int page, int size) {
+    private Query paymentQuery(
+            String search, UserPaymentStatus status, UserPaymentDirection direction,
+            UserPaymentPurpose purpose, String customerUserId
+    ) {
+        Query query = new Query();
+        if (status != null) {
+            query.addCriteria(Criteria.where("status").is(status));
+        }
+        if (direction != null) {
+            query.addCriteria(Criteria.where("direction").is(direction));
+        }
+        if (purpose != null) {
+            query.addCriteria(Criteria.where("purpose").is(purpose));
+        }
+        if (customerUserId != null && !customerUserId.isBlank()) {
+            query.addCriteria(Criteria.where("userId").is(customerUserId.strip()));
+        }
+        if (search != null && !search.isBlank()) {
+            String term = search.strip();
+            if (term.length() > 128) {
+                throw new InvalidInputException("Payment search must not exceed 128 characters");
+            }
+
+            Pattern text = Pattern.compile(Pattern.quote(term), Pattern.CASE_INSENSITIVE);
+            query.addCriteria(new Criteria().orOperator(
+                    Criteria.where("id").is(term),
+                    Criteria.where("userId").is(term),
+                    Criteria.where("targetId").is(term),
+                    Criteria.where("transferReference").regex(text),
+                    Criteria.where("accountName").regex(text),
+                    Criteria.where("bankName").regex(text)
+            ));
+        }
+        return query;
+    }
+
+    private PaginatedData page(Query query, int page, int size) {
         if (page < 1 || page > 10000 || size < 1 || size > 100) {
             throw new InvalidInputException("Invalid page or size");
         }
-        long total = mongoTemplate.count(Query.query(criteria), UserPayment.class);
-        Query query = Query.query(criteria)
-                .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))
+
+        long total = mongoTemplate.count(query, UserPayment.class);
+        query.with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))
                 .skip((long) (page - 1) * size)
                 .limit(size);
+
         List<UserPayment> payments = mongoTemplate.find(query, UserPayment.class);
         return utilsService.createPaginatedData(payments, page, size, total);
     }

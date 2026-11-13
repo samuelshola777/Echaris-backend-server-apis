@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>New payment submitted</title>
+</head>
+<body>
+<h2>New Echaris payment submitted</h2>
+<p>Review this payment in the Echaris admin dashboard.</p>
+<ul>
+    <li>Payment ID <span th:text="${paymentId}"></span></li>
+    <li>Customer user ID <span th:text="${customerUserId}"></span></li>
+    <li>Customer email <span th:text="${customerEmail}"></span></li>
+    <li>Purpose <span th:text="${purpose}"></span></li>
+    <li>Commitment ID <span th:text="${targetId}"></span></li>
+    <li>Amount NGN <span th:text="${amount}"></span></li>
+    <li>Bank name <span th:text="${bankName}"></span></li>
+    <li>Account name <span th:text="${accountName}"></span></li>
+    <li>Account number <span th:text="${accountNumber}"></span></li>
+    <li>Transfer reference <span th:text="${transferReference}"></span></li>
+    <li>Status <span th:text="${status}"></span></li>
+    <li>Submitted at <span th:text="${submittedAt}"></span></li>
+</ul>
+<p>Receipt URLs</p>
+<pre style="white-space: pre-wrap;" th:text="${receiptUrls}"></pre>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package com.echaris.api.product;
 
+import com.echaris.api.product.request.ProductFilterRequest;
 import com.echaris.api.product.request.ProductRequest;
 import com.echaris.api.utils.ApiResponse;
 import com.echaris.api.utils.PaginatedData;
@@ -35,6 +36,13 @@ public class ProductController {
         );
     }
 
+    @PostMapping("/private/catalog/filter")
+    public ApiResponse<PaginatedData> filterCatalog(
+            @Valid @RequestBody(required = false) ProductFilterRequest request
+    ) {
+        return new ApiResponse<>(true, "Available products retrieved", productService.filterCatalog(request));
+    }
+
     @GetMapping("/private/catalog/{productId}")
     public ApiResponse<Product> catalogProduct(@PathVariable String productId) {
         return new ApiResponse<>(
@@ -53,6 +61,13 @@ public class ProductController {
                 true, "Products retrieved",
                 productService.listAll(categoryId, search, page, size)
         );
+    }
+
+    @PostMapping("/private/filter")
+    public ApiResponse<PaginatedData> filter(
+            @Valid @RequestBody(required = false) ProductFilterRequest request
+    ) {
+        return new ApiResponse<>(true, "Products retrieved", productService.filter(request));
     }
 
     @GetMapping("/private/{productId}")

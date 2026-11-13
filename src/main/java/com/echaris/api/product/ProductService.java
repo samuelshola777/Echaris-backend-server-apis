@@ -1,6 +1,7 @@
 package com.echaris.api.product;
 
 import com.echaris.api.admin.AdminService;
+import com.echaris.api.product.request.ProductFilterRequest;
 import com.echaris.api.product.request.ProductRequest;
 import com.echaris.api.productcategory.ProductCategory;
 import com.echaris.api.productcategory.ProductCategoryService;
@@ -9,6 +10,7 @@ import com.echaris.api.utils.UtilsService;
 import com.echaris.api.utils.exception.InvalidInputException;
 import com.echaris.api.utils.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.Decimal128;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -16,8 +18,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -34,16 +39,25 @@ public class ProductService {
     private final ProductStockService stockService;
 
     public PaginatedData catalog(String categoryId, String search, int page, int size) {
+        return list(Query.query(catalogCriteria(categoryId)), search, page, size);
+    }
+
+    public List<Product> catalogProducts(Collection<String> productIds) {
+        if (productIds.isEmpty()) {
+            return List.of();
+        }
+
+        return mongoTemplate.find(Query.query(catalogCriteria(null).and("id").in(productIds)), Product.class);
+    }
+
+    private Criteria catalogCriteria(String categoryId) {
         String selectedCategoryId = categoryId == null ? "" : categoryId.strip();
         List<String> availableCategoryIds = categoryService.available().stream()
                 .map(ProductCategory::getId)
                 .filter(id -> selectedCategoryId.isEmpty() || id.equals(selectedCategoryId))
                 .toList();
 
-        Query query = Query.query(Criteria.where("active").is(true)
-                .and("categoryId").in(availableCategoryIds));
-
-        return list(query, search, page, size);
+        return Criteria.where("active").is(true).and("categoryId").in(availableCategoryIds);
     }
 
     public Product catalogProduct(String productId) {
@@ -66,6 +80,91 @@ public class ProductService {
         }
 
         return list(query, search, page, size);
+    }
+
+    public PaginatedData filterCatalog(ProductFilterRequest request) {
+        return filterProducts(request, true);
+    }
+
+    public PaginatedData filter(ProductFilterRequest request) {
+        adminService.getCurrentAdminProfile();
+        return filterProducts(request, false);
+    }
+
+    private PaginatedData filterProducts(ProductFilterRequest request, boolean catalog) {
+        Query query = catalog ? Query.query(catalogCriteria(null)) : new Query();
+        if (request == null) {
+            return list(query, null, 1, 20);
+        }
+
+        List<Criteria> filters = new ArrayList<>();
+        if (hasText(request.productId())) {
+            filters.add(Criteria.where("id").is(request.productId().strip()));
+        }
+        if (hasText(request.categoryId())) {
+            filters.add(Criteria.where("categoryId").is(request.categoryId().strip()));
+        }
+        if (hasText(request.name())) {
+            filters.add(Criteria.where("name").regex(containsText(request.name())));
+        }
+        if (hasText(request.description())) {
+            filters.add(Criteria.where("description").regex(containsText(request.description())));
+        }
+        if (request.imageUrls() != null && !request.imageUrls().isEmpty()) {
+            filters.add(Criteria.where("imageUrls").all(request.imageUrls().stream().map(String::strip).toList()));
+        }
+        if (request.madeToOrder() != null) {
+            filters.add(Criteria.where("madeToOrder").is(request.madeToOrder()));
+        }
+        if (request.active() != null) {
+            filters.add(Criteria.where("active").is(request.active()));
+        }
+        // Match the BSON type used by the stored product price.
+        addNumericFilters(filters, "price", decimalPrice(request.price()),
+                decimalPrice(request.minPrice()), decimalPrice(request.maxPrice()));
+        addNumericFilters(filters, "stockQuantity", request.stockQuantity(),
+                request.minStockQuantity(), request.maxStockQuantity());
+
+        // Keep request predicates separate from the catalog's mandatory visibility predicates.
+        if (!filters.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(filters));
+        }
+        int page = request.page() == null ? 1 : request.page();
+        int size = request.size() == null ? 20 : request.size();
+        return list(query, request.search(), page, size);
+    }
+
+    private <T extends Comparable<T>> void addNumericFilters(
+            List<Criteria> filters, String field, T exact, T min, T max
+    ) {
+        if (min != null && max != null && min.compareTo(max) > 0) {
+            throw new InvalidInputException("Minimum " + field + " must not exceed its maximum");
+        }
+        if (exact != null) {
+            filters.add(Criteria.where(field).is(exact));
+        }
+        if (min != null || max != null) {
+            Criteria range = Criteria.where(field);
+            if (min != null) {
+                range.gte(min);
+            }
+            if (max != null) {
+                range.lte(max);
+            }
+            filters.add(range);
+        }
+    }
+
+    private Decimal128 decimalPrice(BigDecimal price) {
+        return price == null ? null : new Decimal128(price);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private Pattern containsText(String value) {
+        return Pattern.compile(Pattern.quote(value.strip()), Pattern.CASE_INSENSITIVE);
     }
 
     public Product get(String productId) {
@@ -174,9 +273,7 @@ public class ProductService {
                 throw new InvalidInputException("Product search cannot exceed 150 characters");
             }
 
-            query.addCriteria(Criteria.where("name").regex(
-                    Pattern.compile(Pattern.quote(term), Pattern.CASE_INSENSITIVE)
-            ));
+            query.addCriteria(Criteria.where("name").regex(containsText(term)));
         }
 
         long total = mongoTemplate.count(query, Product.class);
