@@ -2,5 +2,6 @@ package com.echaris.api.address;
 
 public enum AddressType {
     PICKUP,
-    DELIVERY
+    DELIVERY,
+    CUSTOMER_ADDRESS
 }
