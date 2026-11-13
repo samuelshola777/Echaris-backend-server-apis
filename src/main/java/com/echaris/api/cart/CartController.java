@@ -1,14 +1,13 @@
 package com.echaris.api.cart;
 
 import com.echaris.api.cart.request.CartItemQuantityRequest;
+import com.echaris.api.cart.request.CartItemRemoveRequest;
 import com.echaris.api.cart.response.CartResponse;
 import com.echaris.api.utils.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,25 +25,23 @@ public class CartController {
         return new ApiResponse<>(true, "Cart retrieved", cartService.getCart(userId));
     }
 
-    @PutMapping("/private/items/{productId}")
-    public ApiResponse<CartResponse> setItemQuantity(
+    @PostMapping("/private/add")
+    public ApiResponse<CartResponse> addItem(
             @RequestAttribute("userId") String userId,
-            @PathVariable String productId,
             @Valid @RequestBody CartItemQuantityRequest request
     ) {
-        return new ApiResponse<>(true, "Cart item saved",
-                cartService.setItemQuantity(userId, productId, request.quantity().intValueExact()));
+        return new ApiResponse<>(true, "Cart item saved", cartService.addItem(userId, request));
     }
 
-    @DeleteMapping("/private/items/{productId}")
+    @PostMapping("/private/remove")
     public ApiResponse<CartResponse> removeItem(
             @RequestAttribute("userId") String userId,
-            @PathVariable String productId
+            @Valid @RequestBody CartItemRemoveRequest request
     ) {
-        return new ApiResponse<>(true, "Cart item removed", cartService.removeItem(userId, productId));
+        return new ApiResponse<>(true, "Cart item removed", cartService.removeItem(userId, request));
     }
 
-    @DeleteMapping("/private/items")
+    @PostMapping("/private/clear")
     public ApiResponse<CartResponse> clearCart(@RequestAttribute("userId") String userId) {
         return new ApiResponse<>(true, "Cart cleared", cartService.clearCart(userId));
     }

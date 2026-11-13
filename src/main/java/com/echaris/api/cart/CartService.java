@@ -1,5 +1,7 @@
 package com.echaris.api.cart;
 
+import com.echaris.api.cart.request.CartItemQuantityRequest;
+import com.echaris.api.cart.request.CartItemRemoveRequest;
 import com.echaris.api.cart.response.CartItemResponse;
 import com.echaris.api.cart.response.CartResponse;
 import com.echaris.api.product.Product;
@@ -32,7 +34,10 @@ public class CartService {
         return response(cart, cart.getItems(), catalogProducts(cart.getItems()));
     }
 
-    public CartResponse setItemQuantity(String userId, String productId, int quantity) {
+    public CartResponse addItem(String userId, CartItemQuantityRequest request) {
+        String productId = request.productId().strip();
+        int quantity = request.quantity().intValueExact();
+
         if (quantity < 1) {
             throw new InvalidInputException("Cart item quantity must be positive");
         }
@@ -54,7 +59,8 @@ public class CartService {
         return response;
     }
 
-    public CartResponse removeItem(String userId, String productId) {
+    public CartResponse removeItem(String userId, CartItemRemoveRequest request) {
+        String productId = request.productId().strip();
         Cart cart = findCart(userId);
         List<CartItem> items = cart.getItems().stream()
                 .filter(item -> !item.productId().equals(productId))
