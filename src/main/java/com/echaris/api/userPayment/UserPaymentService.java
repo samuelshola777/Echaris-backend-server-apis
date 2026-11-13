@@ -8,6 +8,7 @@ import com.echaris.api.commitment.CommitmentReturnStatus;
 import com.echaris.api.commitment.CommitmentRules;
 import com.echaris.api.commitment.CommitmentService;
 import com.echaris.api.commitment.CommitmentStatus;
+import com.echaris.api.marketplace.MarketplaceFinancingService;
 import com.echaris.api.notification.NotificationService;
 import com.echaris.api.payoutaccount.CustomerPayoutAccount;
 import com.echaris.api.payoutaccount.response.CustomerPayoutAccountResponse;
@@ -61,6 +62,7 @@ public class UserPaymentService {
 
     private final MongoTemplate mongoTemplate;
     private final CommitmentService commitmentService;
+    private final MarketplaceFinancingService marketplaceFinancingService;
     private final ManagedFileRepository managedFileRepository;
     private final UtilsService utilsService;
     private final AdminRepository adminRepository;
@@ -79,7 +81,8 @@ public class UserPaymentService {
         indexes.createIndex(new Index().on("userId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
         indexes.createIndex(new Index().on("status", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
 
-        backfillDirection(UserPaymentDirection.INCOMING, UserPaymentPurpose.COMMITMENT, UserPaymentPurpose.ORDER);
+        backfillDirection(UserPaymentDirection.INCOMING, UserPaymentPurpose.COMMITMENT,
+                UserPaymentPurpose.ORDER, UserPaymentPurpose.MARKETPLACE_FINANCING);
         backfillDirection(UserPaymentDirection.OUTGOING, UserPaymentPurpose.CUSTOMER_PAYOUT);
         indexes.createIndex(new Index().on("direction", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
         indexes.createIndex(new Index()
@@ -98,15 +101,27 @@ public class UserPaymentService {
     @Transactional
     public UserPayment submit(UserPaymentRequest request) {
         User customer = requireCustomer();
-        requireCommitmentPurpose(request.purpose());
-        Commitment commitment = commitmentService.get(request.targetId().strip());
+        requireSupportedFundingPurpose(request.purpose());
+        String targetId = request.targetId().strip();
         BigDecimal amount = BigDecimal.valueOf(CommitmentRules.kobo(request.amount()), 2);
+        String targetName;
 
-        if (commitment.getStatus() != CommitmentStatus.AWAITING_PAYMENT || commitment.getFundedAt() != null) {
-            throw new InvalidOperationException("This commitment is not awaiting payment");
-        }
-        if (amount.compareTo(commitment.getCapital()) != 0) {
-            throw new InvalidInputException("The submitted amount must match the commitment amount");
+        if (request.purpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            var financing = marketplaceFinancingService.getUnpaidFinancing(targetId, customer.getId());
+            if (amount.compareTo(financing.getCapital()) != 0) {
+                throw new InvalidInputException("The submitted amount must match the marketplace capital amount");
+            }
+            targetName = financing.getName();
+        } else {
+            Commitment commitment = commitmentService.get(targetId);
+            if (commitment.getStatus() != CommitmentStatus.AWAITING_PAYMENT || commitment.getFundedAt() != null) {
+                throw new InvalidOperationException("This commitment is not awaiting payment");
+            }
+            if (amount.compareTo(commitment.getCapital()) != 0) {
+                throw new InvalidInputException("The submitted amount must match the commitment amount");
+            }
+            targetId = commitment.getId();
+            targetName = commitment.getName();
         }
 
         UserPayment payment = new UserPayment();
@@ -114,7 +129,7 @@ public class UserPaymentService {
         payment.setUserId(customer.getId());
         payment.setPurpose(request.purpose());
         payment.setDirection(UserPaymentDirection.INCOMING);
-        payment.setTargetId(commitment.getId());
+        payment.setTargetId(targetId);
         payment.setAmount(amount);
         payment.setBankName(request.bankName().strip());
         payment.setAccountName(request.accountName().strip());
@@ -125,11 +140,10 @@ public class UserPaymentService {
         payment.setTransferReference(reference == null || reference.isBlank() ? null : reference.strip());
 
         UserPayment saved = mongoTemplate.insert(payment);
-        String commitmentName = commitment.getName();
-        notifyAdminsOfSubmission(saved, customer, commitmentName);
-        notifyCustomer(saved, commitmentName, "USER_PAYMENT_UNDER_REVIEW", "Payment under review",
+        notifyAdminsOfSubmission(saved, customer, targetName);
+        notifyCustomer(saved, targetName, "USER_PAYMENT_UNDER_REVIEW", "Payment under review",
                 "We received your %s. An admin will review your receipt."
-                        .formatted(paymentDescription(saved, commitmentName)));
+                        .formatted(paymentDescription(saved, targetName)));
         return saved;
     }
 
@@ -180,6 +194,7 @@ public class UserPaymentService {
         switch (saved.getPayoutType()) {
             case COMMITMENT_CAPITAL -> settleCapitalPayout(saved);
             case COMMITMENT_RETURN -> settleReturnPayout(saved);
+            case MARKETPLACE_CAPITAL -> marketplaceFinancingService.recordCapitalPayout(saved);
         }
 
         notifyPayoutCustomer(saved, customer);
@@ -273,7 +288,7 @@ public class UserPaymentService {
     public UserPayment approve(String paymentId, UserPaymentApprovalRequest request) {
         User admin = commitmentService.requireAdmin();
         UserPayment payment = requirePayment(paymentId);
-        requireCommitmentPurpose(payment.getPurpose());
+        requireSupportedFundingPurpose(payment.getPurpose());
         String bankCreditId = request.bankCreditId().strip();
         BigDecimal verifiedAmount = BigDecimal.valueOf(CommitmentRules.kobo(request.verifiedAmount()), 2);
         Instant reviewedAt = Instant.now();
@@ -298,7 +313,7 @@ public class UserPaymentService {
         payment.setBankCreditId(bankCreditId);
         payment.setPaidAt(paidAt);
         payment.setReviewedByUserId(admin.getId());
-        payment.setReviewedAt(reviewedAt);
+        payment.setReviewedAt(reviewedAt.truncatedTo(ChronoUnit.MILLIS));
         payment.setUpdatedAt(LocalDateTime.now());
 
         UserPayment saved;
@@ -308,15 +323,22 @@ public class UserPaymentService {
             throw new ResourceExistsException("This bank credit has already been applied to a payment");
         }
 
-        commitmentService.confirmManualFunding(
-                saved.getTargetId(), saved.getUserId(), saved.getAmount(),
-                saved.getId(), paidAt, admin.getId()
-        );
+        String targetName;
+        String fundedMessage;
+        if (saved.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            var financing = marketplaceFinancingService.confirmFinancingPayment(saved);
+            targetName = financing.getName();
+            fundedMessage = "Your marketplace financing is now accumulating returns.";
+        } else {
+            commitmentService.confirmManualFunding(
+                    saved.getTargetId(), saved.getUserId(), saved.getAmount(),
+                    saved.getId(), paidAt, admin.getId());
+            targetName = findTargetName(saved);
+            fundedMessage = "Your commitment is now funded.";
+        }
 
-        String commitmentName = findCommitmentName(saved);
-        notifyCustomer(saved, commitmentName, "USER_PAYMENT_APPROVED", "Payment approved",
-                "Your %s was approved. Your commitment is now funded."
-                        .formatted(paymentDescription(saved, commitmentName)));
+        notifyCustomer(saved, targetName, "USER_PAYMENT_APPROVED", "Payment approved",
+                "Your %s was approved. %s".formatted(paymentDescription(saved, targetName), fundedMessage));
         return saved;
     }
 
@@ -337,7 +359,7 @@ public class UserPaymentService {
         payment.setUpdatedAt(LocalDateTime.now());
 
         UserPayment saved = mongoTemplate.save(payment);
-        String commitmentName = findCommitmentName(saved);
+        String commitmentName = findTargetName(saved);
         notifyCustomer(saved, commitmentName, "USER_PAYMENT_REJECTED", "Payment rejected",
                 "Your %s was rejected. Check your payment details before submitting another receipt."
                         .formatted(paymentDescription(saved, commitmentName)));
@@ -425,7 +447,9 @@ public class UserPaymentService {
         data.put("amount", payment.getAmount().toPlainString());
         data.put("currency", "NGN");
         data.put("status", payment.getStatus().name());
-        putIfPresent(data, "commitmentName", commitmentName);
+        String targetNameKey = payment.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING
+                ? "financingName" : "commitmentName";
+        putIfPresent(data, targetNameKey, commitmentName);
         putIfPresent(data, "bankName", payment.getBankName());
         putIfPresent(data, "accountName", payment.getAccountName());
         putIfPresent(data, "transferReference", payment.getTransferReference());
@@ -441,7 +465,10 @@ public class UserPaymentService {
         return data;
     }
 
-    private String findCommitmentName(UserPayment payment) {
+    private String findTargetName(UserPayment payment) {
+        if (payment.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            return marketplaceFinancingService.getCustomerFinancing(payment.getTargetId(), payment.getUserId()).getName();
+        }
         if (payment.getPurpose() != UserPaymentPurpose.COMMITMENT) {
             return null;
         }
@@ -453,9 +480,11 @@ public class UserPaymentService {
     }
 
     private String paymentDescription(UserPayment payment, String commitmentName) {
+        String targetType = payment.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING
+                ? "marketplace financing" : "commitment";
         String target = commitmentName == null || commitmentName.isBlank()
-                ? "commitment " + payment.getTargetId()
-                : "commitment \"" + commitmentName + "\"";
+                ? targetType + " " + payment.getTargetId()
+                : targetType + " \"" + commitmentName + "\"";
         return "NGN " + payment.getAmount().toPlainString() + " payment for " + target;
     }
 
@@ -501,9 +530,9 @@ public class UserPaymentService {
         }
     }
 
-    private void requireCommitmentPurpose(UserPaymentPurpose purpose) {
+    private void requireSupportedFundingPurpose(UserPaymentPurpose purpose) {
         requireIncomingPayment(purpose);
-        if (purpose != UserPaymentPurpose.COMMITMENT) {
+        if (purpose != UserPaymentPurpose.COMMITMENT && purpose != UserPaymentPurpose.MARKETPLACE_FINANCING) {
             throw new InvalidOperationException("Manual order payments are not available yet");
         }
     }

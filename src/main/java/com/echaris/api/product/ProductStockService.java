@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -77,6 +78,17 @@ public class ProductStockService {
         return changeStock(productId, -quantity, customerUserId, orderId, ProductStockMovementType.PURCHASE, orderId);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ProductStockMovement reserveForMarketplace(
+            String productId, int quantity, String adminUserId, String financingId
+    ) {
+        if (quantity < 1) {
+            throw new InvalidInputException("Marketplace reservation quantity must be positive");
+        }
+        return changeStock(productId, -quantity, adminUserId, financingId,
+                ProductStockMovementType.MARKETPLACE_RESERVATION, financingId);
+    }
+
     public PaginatedData history(String productId, int page, int size) {
         adminService.getCurrentAdminProfile();
 
@@ -113,10 +125,10 @@ public class ProductStockService {
 
     private ProductStockMovement changeStock(
             String productId, int quantityChange, String actorUserId,
-            String orderId, ProductStockMovementType ProductStockMovementType, String operationKey
+            String orderId, ProductStockMovementType movementType, String operationKey
     ) {
         // Length-prefix the product ID so the product and operation key cannot overlap.
-        String movementId = ProductStockMovementType.name() + ":" + productId.length() + ":" + productId + ":" + operationKey;
+        String movementId = movementType.name() + ":" + productId.length() + ":" + productId + ":" + operationKey;
         ProductStockMovement existing = mongoTemplate.findById(movementId, ProductStockMovement.class);
 
         if (existing != null) {
@@ -135,6 +147,9 @@ public class ProductStockService {
         int quantityBefore = product.getStockQuantity();
         long quantityAfter = (long) quantityBefore + quantityChange;
 
+        if (quantityAfter < 0 && movementType == ProductStockMovementType.MARKETPLACE_RESERVATION) {
+            throw new ResourceExistsException("Requested quantity exceeds available stock");
+        }
         if (quantityAfter < 0 || quantityAfter > Integer.MAX_VALUE) {
             throw new InvalidInputException("Stock adjustment would leave an invalid quantity");
         }
@@ -143,17 +158,17 @@ public class ProductStockService {
         product.setUpdatedAt(LocalDateTime.now());
         Product saved = productRepository.save(product);
 
-        return record(movementId, saved, ProductStockMovementType, quantityBefore, actorUserId, orderId);
+        return record(movementId, saved, movementType, quantityBefore, actorUserId, orderId);
     }
 
     private ProductStockMovement record(
-            String movementId, Product product, ProductStockMovementType ProductStockMovementType, int quantityBefore,
+            String movementId, Product product, ProductStockMovementType movementType, int quantityBefore,
             String actorUserId, String orderId
     ) {
         ProductStockMovement movement = new ProductStockMovement();
         movement.setId(movementId);
         movement.setProductId(product.getId());
-        movement.setType(ProductStockMovementType);
+        movement.setType(movementType);
         movement.setQuantityBefore(quantityBefore);
         movement.setQuantityChange(product.getStockQuantity() - quantityBefore);
         movement.setQuantityAfter(product.getStockQuantity());

@@ -46,10 +46,14 @@ public class DefaultRouteValidator {
     private static final Pattern PRIVATE_CART =
             route("/api/v1/cart/private");
 
+    private static final Pattern PRIVATE_MARKETPLACE = route("/api/v1/marketplace/private");
+    private static final Pattern ADMIN_MARKETPLACE = route("/api/v1/marketplace/private/admin");
+
     public static final List<Pattern> ADMIN_ENDPOINTS =
             routes(
                     "/api/v1/commitments/private/admin",
                     "/api/v1/user-payments/private/admin",
+                    "/api/v1/marketplace/private/admin",
                     "/api/v1/notifications/private",
                     "/api/v1/product/private",
                     "/api/v1/admin/private",
@@ -76,6 +80,10 @@ public class DefaultRouteValidator {
 
                 if (uri.equals("/api/v1/user-payments/private")) {
                     return true;
+                }
+
+                if (PRIVATE_MARKETPLACE.matcher(uri).matches()) {
+                    return !ADMIN_MARKETPLACE.matcher(uri).matches();
                 }
 
                 if (PRIVATE_ADDRESSES.matcher(uri).matches() || PRIVATE_CART.matcher(uri).matches()) {

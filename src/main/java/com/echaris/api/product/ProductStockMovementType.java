@@ -4,5 +4,6 @@ public enum ProductStockMovementType {
     INITIAL_STOCK,
     ADMIN_ADJUSTMENT,
     ADMIN_SET,
-    PURCHASE
+    PURCHASE,
+    MARKETPLACE_RESERVATION
 }
