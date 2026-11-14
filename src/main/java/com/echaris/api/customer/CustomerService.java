@@ -466,8 +466,23 @@ public class CustomerService {
                 profile.userId(),
                 PageRequest.of(page - 1, size, Sort.by(Sort.Order.desc("referralVerifiedAt"), Sort.Order.asc("id")))
         );
+        Set<String> userIds = referrals.getContent().stream()
+                .filter(customer -> !customer.isDeleted())
+                .map(Customer::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<String, User> usersById = userIds.isEmpty()
+                ? Map.of()
+                : userService.getUsersByIds(userIds).stream()
+                .filter(user -> user.getUserType() == UserType.CUSTOMER && !user.isDeleted())
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
         List<CustomerReferralResponse> rows = referrals.getContent().stream()
-                .map(customer -> new CustomerReferralResponse(customer.getId(), customer.getReferralVerifiedAt()))
+                .map(customer -> CustomerReferralResponse.from(customer,
+                        customer.isDeleted() || customer.getUserId() == null
+                                ? null
+                                : usersById.get(customer.getUserId())))
                 .toList();
 
         return utilsService.createPaginatedData(rows, page, size, referrals.getTotalElements());
