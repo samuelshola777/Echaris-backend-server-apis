@@ -130,15 +130,15 @@ public class MarketplaceController {
                 financingService.updateFulfillmentStatus(financingId, request));
     }
 
-    @PutMapping("/private/admin/update-market-financing-payment-status/{userPaymentId}")
+    @PutMapping("/private/admin/update-market-financing-payment-status/{financingId}")
     public ApiResponse<UserPayment> adminUpdatesMarketFinancingPaymentStatus(
-            @PathVariable("userPaymentId") String userPaymentId,
+            @PathVariable("financingId") String financingId,
             @RequestParam("status") UserPaymentStatus status,
             @RequestParam(value = "reason", required = false) String reason
     ) {
 
         return new ApiResponse<>(true, "Marketplace payment status updated",
-                financingService.adminUpdatesMarketFinancingPaymentStatus(userPaymentId, status, reason));
+                financingService.adminUpdatesMarketFinancingPaymentStatus(financingId, status, reason));
     }
 
     @GetMapping("/private/admin/get-rate")

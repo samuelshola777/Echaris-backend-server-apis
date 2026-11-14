@@ -4,7 +4,6 @@ import com.echaris.api.customer.CustomerService;
 import com.echaris.api.customer.response.CustomerResponse;
 import com.echaris.api.payoutaccount.response.CustomerPayoutAccountResponse;
 import com.echaris.api.utils.exception.InvalidInputException;
-import com.echaris.api.utils.exception.ResourceExistsException;
 import com.echaris.api.utils.exception.ResourceNotFoundException;
 import com.echaris.api.utils.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
@@ -28,26 +27,24 @@ public class CustomerPayoutAccountService {
     private final MongoTemplate mongoTemplate;
     private final CustomerService customerService;
 
-    public CustomerPayoutAccountResponse create(CustomerPayoutAccountDetails request) {
+    public CustomerPayoutAccountResponse createOrUpdate(CustomerPayoutAccountDetails request) {
         String userId = requireCustomerId();
+        CustomerPayoutAccountDetails details = normalize(request);
         CustomerPayoutAccount account = mongoTemplate.findById(userId, CustomerPayoutAccount.class);
 
         if (account != null) {
-            if (account.getDetails() != null) {
-                throw new ResourceExistsException("You already have a payout account");
-            }
-            recordChange(account, "CREATED", normalize(request), userId);
-            return CustomerPayoutAccountResponse.from(mongoTemplate.save(account));
+            return saveDetails(account, details, userId);
         }
 
         account = new CustomerPayoutAccount();
         account.setId(userId);
-        recordChange(account, "CREATED", normalize(request), userId);
+        recordChange(account, "CREATED", details, userId);
 
         try {
             return CustomerPayoutAccountResponse.from(mongoTemplate.insert(account));
         } catch (DuplicateKeyException exception) {
-            throw new ResourceExistsException("You already have a payout account");
+            throw new OptimisticLockingFailureException(
+                    "Payout account changed. Reload before trying again", exception);
         }
     }
 
@@ -59,13 +56,18 @@ public class CustomerPayoutAccountService {
         String userId = requireCustomerId();
         CustomerPayoutAccount account = requireAccount(userId);
         requireVersion(account, version);
-        CustomerPayoutAccountDetails details = normalize(request);
+        return saveDetails(account, normalize(request), userId);
+    }
 
+    private CustomerPayoutAccountResponse saveDetails(
+            CustomerPayoutAccount account, CustomerPayoutAccountDetails details, String userId
+    ) {
         if (details.equals(account.getDetails())) {
             return CustomerPayoutAccountResponse.from(account);
         }
 
-        recordChange(account, "UPDATED", details, userId);
+        String action = account.getDetails() == null ? "CREATED" : "UPDATED";
+        recordChange(account, action, details, userId);
         return CustomerPayoutAccountResponse.from(mongoTemplate.save(account));
     }
 

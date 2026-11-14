@@ -128,7 +128,7 @@ public class MarketplaceFinancingService {
 
     @Transactional
     public UserPayment adminUpdatesMarketFinancingPaymentStatus(
-            String userPaymentId,
+            String financingId,
             UserPaymentStatus userPaymentStatus,
             String reasonForRejection
     ) {
@@ -138,9 +138,10 @@ public class MarketplaceFinancingService {
         if (!approved && userPaymentStatus != UserPaymentStatus.REJECTED) {
             throw new InvalidInputException("Payment status must be APPROVED or REJECTED");
         }
+        MarketplaceFinancing financing =getFinancingById(financingId);
 
         UserPayment payment = mongoTemplate.findById(
-                requireText(userPaymentId, "Payment ID"), UserPayment.class
+                requireText(financing.getFundingPaymentId(), "Payment ID"), UserPayment.class
         );
         if (payment == null) {
             throw new ResourceNotFoundException("Payment submission not found");
@@ -162,9 +163,7 @@ public class MarketplaceFinancingService {
             throw new InvalidOperationException("Only pending payments can be reviewed");
         }
 
-        MarketplaceFinancing financing = getUnpaidFinancing(
-                payment.getTargetId(), payment.getUserId()
-        );
+
         if (financing.getFundingPaymentId() != null
                 && !payment.getId().equals(financing.getFundingPaymentId())) {
             throw new InvalidOperationException("Payment does not belong to this marketplace financing");

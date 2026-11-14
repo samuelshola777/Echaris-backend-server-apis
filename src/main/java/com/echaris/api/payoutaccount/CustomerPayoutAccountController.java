@@ -25,11 +25,10 @@ public class CustomerPayoutAccountController {
     private final CustomerPayoutAccountService service;
 
     @PostMapping("/private/payout-account")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CustomerPayoutAccountResponse> create(
+    public ApiResponse<CustomerPayoutAccountResponse> createOrUpdate(
             @Valid @RequestBody CustomerPayoutAccountDetails request
     ) {
-        return new ApiResponse<>(true, "Payout account created", service.create(request));
+        return new ApiResponse<>(true, "Payout account saved", service.createOrUpdate(request));
     }
 
     @GetMapping("/private/payout-account")
