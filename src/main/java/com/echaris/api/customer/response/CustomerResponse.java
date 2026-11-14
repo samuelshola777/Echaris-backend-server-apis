@@ -24,6 +24,7 @@ public record CustomerResponse(
         Gender gender,
         boolean active,
         boolean verified,
+        boolean doneKyc,
         boolean marketingEmailsEnabled,
         LocalDateTime lastLoginAt,
         LocalDateTime createdAt,
@@ -52,6 +53,7 @@ public record CustomerResponse(
                                 && user.isActive()
                 )
                 .verified(user.isVerified())
+                .doneKyc(customer.isDoneKyc())
                 .marketingEmailsEnabled(
                         customer.isMarketingEmailsEnabled()
                 )
