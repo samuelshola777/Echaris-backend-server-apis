@@ -4,6 +4,7 @@ import com.echaris.api.marketplace.request.MarketplaceFinancingRequest;
 import com.echaris.api.marketplace.request.MarketplaceFulfillmentRequest;
 import com.echaris.api.marketplace.request.MarketplaceFulfillmentStatusRequest;
 import com.echaris.api.marketplace.request.MarketplaceRateRequest;
+import com.echaris.api.marketplace.response.MarketplaceFinancingResponse;
 import com.echaris.api.userPayment.UserPayment;
 import com.echaris.api.userPayment.UserPaymentStatus;
 import com.echaris.api.utils.ApiResponse;
@@ -45,7 +46,7 @@ public class MarketplaceController {
     }
 
     @GetMapping({"/private/get-my-financing/{financingId}", "/private/{financingId}"})
-    public ApiResponse<MarketplaceFinancing> getMyFinancing(
+    public ApiResponse<MarketplaceFinancingResponse> getMyFinancing(
             @PathVariable("financingId") String financingId
     ) {
         return new ApiResponse<>(true, "Marketplace financing retrieved",
@@ -103,7 +104,7 @@ public class MarketplaceController {
             "/private/admin/get-admin-financing/{financingId}",
             "/private/admin/{financingId}"
     })
-    public ApiResponse<MarketplaceFinancing> getAdminFinancing(
+    public ApiResponse<MarketplaceFinancingResponse> getAdminFinancing(
             @PathVariable("financingId") String financingId
     ) {
         return new ApiResponse<>(true, "Marketplace financing retrieved",

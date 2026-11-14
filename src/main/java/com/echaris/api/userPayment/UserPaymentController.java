@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,7 +27,7 @@ public class UserPaymentController {
     @PostMapping("/private")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<UserPayment> submit(@Valid @RequestBody UserPaymentRequest request) {
-        return new ApiResponse<>(true, "Payment submitted for review", userPaymentService.submit(request));
+        return new ApiResponse<>(true, "Payment submitted for review", userPaymentService.createUserManualPayment(request));
     }
 
     @GetMapping("/private")

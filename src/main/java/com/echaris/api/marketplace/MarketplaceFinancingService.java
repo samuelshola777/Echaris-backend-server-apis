@@ -8,7 +8,9 @@ import com.echaris.api.customer.CustomerService;
 import com.echaris.api.marketplace.request.MarketplaceFinancingRequest;
 import com.echaris.api.marketplace.request.MarketplaceFulfillmentRequest;
 import com.echaris.api.marketplace.request.MarketplaceFulfillmentStatusRequest;
+import com.echaris.api.marketplace.response.MarketplaceFinancingResponse;
 import com.echaris.api.product.Product;
+import com.echaris.api.product.ProductRepository;
 import com.echaris.api.product.ProductService;
 import com.echaris.api.product.ProductStockService;
 import com.echaris.api.userPayment.UserPayment;
@@ -39,6 +41,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -58,6 +63,7 @@ public class MarketplaceFinancingService {
     private final MarketplaceNotificationService notificationService;
     private final PaginationService paginationService;
     private final MarketplaceFinancingRepository marketplaceFinancingRepository;
+    private final ProductRepository productRepository;
 
     @PostConstruct
     public void createIndexes() {
@@ -264,13 +270,23 @@ public class MarketplaceFinancingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Marketplace financing not found"));
     }
 
-    public MarketplaceFinancing getMyFinancing(String financingId) {
-        return getCustomerFinancing(financingId, customerService.getCurrentProfile().userId());
+    public MarketplaceFinancingResponse getMyFinancing(String financingId) {
+        return buildFinancingResponse(getCurrentCustomerFinancing(financingId));
     }
 
-    public MarketplaceFinancing getAdminFinancing(String financingId) {
+    public MarketplaceFinancingResponse getAdminFinancing(String financingId) {
         adminService.getCurrentAdminProfile();
-        return getFinancingById(financingId);
+        return buildFinancingResponse(getFinancingById(financingId));
+    }
+
+    private MarketplaceFinancingResponse buildFinancingResponse(MarketplaceFinancing financing) {
+        String productId = financing.getProductId();
+        Product product = productId == null ? null : productRepository.findById(productId).orElse(null);
+        return MarketplaceFinancingResponse.from(financing, product);
+    }
+
+    private MarketplaceFinancing getCurrentCustomerFinancing(String financingId) {
+        return getCustomerFinancing(financingId, customerService.getCurrentProfile().userId());
     }
 
     public PaginatedData getMyFinancings(int page, int size) {
@@ -284,16 +300,17 @@ public class MarketplaceFinancingService {
     }
 
     public PaginatedData getMyReturns(String financingId, int page, int size) {
-        return returnService.getReturns(getMyFinancing(financingId).getId(), page, size);
+        return returnService.getReturns(getCurrentCustomerFinancing(financingId).getId(), page, size);
     }
 
     public PaginatedData getAdminReturns(String financingId, int page, int size) {
-        return returnService.getReturns(getAdminFinancing(financingId).getId(), page, size);
+        adminService.getCurrentAdminProfile();
+        return returnService.getReturns(getFinancingById(financingId).getId(), page, size);
     }
 
     @Transactional
     public MarketplaceFinancing updateFulfillment(String financingId, MarketplaceFulfillmentRequest request) {
-        MarketplaceFinancing financing = getMyFinancing(financingId);
+        MarketplaceFinancing financing = getCurrentCustomerFinancing(financingId);
 
         if (!financing.getFulfillmentStatus().allowsCustomerUpdate()) {
             throw new ResourceExistsException("Fulfillment details are locked because preparation has started");
@@ -331,7 +348,7 @@ public class MarketplaceFinancingService {
 
     @Transactional
     public MarketplaceFinancing requestCapitalPayout(String financingId) {
-        MarketplaceFinancing financing = getMyFinancing(financingId);
+        MarketplaceFinancing financing = getCurrentCustomerFinancing(financingId);
 
         if (financing.getStatus() != MarketplaceFinancingStatus.MATURED) {
             throw new InvalidOperationException("Capital can be requested once returns reach the product total");
@@ -434,7 +451,27 @@ public class MarketplaceFinancingService {
     }
 
     private PaginatedData getFinancingPage(Query filter, int page, int size) {
-        return paginationService.paginate(filter, MarketplaceFinancing.class, page, size,
+        PaginatedData result = paginationService.paginate(filter, MarketplaceFinancing.class, page, size,
                 "createdAt", "DESC", Set.of("createdAt"));
+        List<MarketplaceFinancing> financings = ((List<?>) result.data()).stream()
+                .map(MarketplaceFinancing.class::cast)
+                .toList();
+        List<String> productIds = financings.stream()
+                .map(MarketplaceFinancing::getProductId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<String, Product> productsById = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            productRepository.findAllById(productIds)
+                    .forEach(product -> productsById.put(product.getId(), product));
+        }
+
+        List<MarketplaceFinancingResponse> responses = financings.stream()
+                .map(financing -> MarketplaceFinancingResponse.from(
+                        financing, productsById.get(financing.getProductId())))
+                .toList();
+        return new PaginatedData(result.totalPage(), result.numberOfElements(), result.totalElements(), responses);
     }
 }

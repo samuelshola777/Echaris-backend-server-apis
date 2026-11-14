@@ -63,6 +63,19 @@ public class ProductController {
         );
     }
 
+    @GetMapping("/public")
+    public ApiResponse<PaginatedData> listAllPublic(
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return new ApiResponse<>(
+                true, "Products retrieved",
+                productService.listAll(categoryId, search, page, size)
+        );
+    }
+
     @PostMapping("/private/filter")
     public ApiResponse<PaginatedData> filter(
             @Valid @RequestBody(required = false) ProductFilterRequest request

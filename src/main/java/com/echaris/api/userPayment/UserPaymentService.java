@@ -93,7 +93,7 @@ public class UserPaymentService {
     }
 
     @Transactional
-    public UserPayment submit(UserPaymentRequest request) {
+    public UserPayment createUserManualPayment(UserPaymentRequest request) {
         User customer = requireCustomer();
         requireSupportedFundingPurpose(request.purpose());
         String targetId = request.targetId().strip();
@@ -536,10 +536,6 @@ public class UserPaymentService {
             throw new InvalidInputException("Receipt URL is invalid");
         }
 
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null
-                || !managedFileRepository.existsByFileUrl(url)) {
-            throw new InvalidInputException("Each receipt must be an uploaded HTTPS file URL");
-        }
         return url;
     }
 
