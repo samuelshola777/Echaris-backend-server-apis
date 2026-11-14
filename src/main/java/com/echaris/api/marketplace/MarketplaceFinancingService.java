@@ -1,6 +1,5 @@
 package com.echaris.api.marketplace;
 
-import com.echaris.api.accountdetails.EcharisAccountDetails;
 import com.echaris.api.address.Address;
 import com.echaris.api.address.AddressType;
 import com.echaris.api.admin.AdminService;
@@ -9,13 +8,13 @@ import com.echaris.api.customer.CustomerService;
 import com.echaris.api.marketplace.request.MarketplaceFinancingRequest;
 import com.echaris.api.marketplace.request.MarketplaceFulfillmentRequest;
 import com.echaris.api.marketplace.request.MarketplaceFulfillmentStatusRequest;
-import com.echaris.api.marketplace.response.MarketplacePaymentInstructionsResponse;
-import com.echaris.api.marketplace.response.MarketplaceTermsResponse;
 import com.echaris.api.product.Product;
 import com.echaris.api.product.ProductService;
 import com.echaris.api.product.ProductStockService;
 import com.echaris.api.userPayment.UserPayment;
+import com.echaris.api.userPayment.UserPaymentDirection;
 import com.echaris.api.userPayment.UserPaymentPurpose;
+import com.echaris.api.userPayment.UserPaymentStatus;
 import com.echaris.api.utils.PaginatedData;
 import com.echaris.api.utils.PaginationService;
 import com.echaris.api.utils.exception.InvalidInputException;
@@ -24,12 +23,13 @@ import com.echaris.api.utils.exception.ResourceExistsException;
 import com.echaris.api.utils.exception.ResourceNotFoundException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,15 +41,12 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class MarketplaceFinancingService {
-
-    private static final BigDecimal MINIMUM_CAPITAL = new BigDecimal("50000.00");
 
     private final MongoTemplate mongoTemplate;
     private final CustomerService customerService;
@@ -60,9 +57,7 @@ public class MarketplaceFinancingService {
     private final MarketplaceReturnService returnService;
     private final MarketplaceNotificationService notificationService;
     private final PaginationService paginationService;
-
-    @Value("${echaris.marketplace.agreement-version:1}")
-    private String agreementVersion;
+    private final MarketplaceFinancingRepository marketplaceFinancingRepository;
 
     @PostConstruct
     public void createIndexes() {
@@ -71,84 +66,202 @@ public class MarketplaceFinancingService {
         indexes.createIndex(new Index().on("status", Sort.Direction.ASC).on("nextReturnAt", Sort.Direction.ASC));
     }
 
-    public MarketplaceTermsResponse getTerms() {
-        return new MarketplaceTermsResponse(
-                agreementVersion, rateService.getConfiguredPercentage(), MINIMUM_CAPITAL,
-                MarketplaceFinancing.PRODUCT_RELEASE_PERCENT, MarketplaceFinancing.CAPITAL_PAYOUT_PERCENT
-        );
-    }
-
     public MarketplaceFinancing createFinancing(MarketplaceFinancingRequest request) {
-        String userId = customerService.getCurrentProfile().userId();
-
-        if (!request.agreementAccepted() || !agreementVersion.equals(request.agreementVersion().strip())) {
+        if (!request.agreementAccepted()) {
             throw new InvalidInputException("Accept the current marketplace agreement");
         }
-
-        int quantity = request.quantity().intValueExact();
-        Product product = getProductWithStock(request.productId().strip(), quantity);
-        BigDecimal capital = BigDecimal.valueOf(CommitmentRules.kobo(request.capital()), 2);
-        if (capital.compareTo(MINIMUM_CAPITAL) < 0) {
-            throw new InvalidInputException("Marketplace capital must be at least NGN 50,000");
+        String userId = customerService.getCurrentProfile().userId();
+        boolean alreadyActive = marketplaceFinancingRepository.existsByProductIdAndUserIdAndCompletedFalse(request.productId(), userId);
+        if (alreadyActive) {
+            throw new ResourceExistsException(
+                    "You already have an active marketplace financing for this product");
         }
+        int quantity = request.quantity().intValueExact();
+        Product product = getProductWithStock(request.productId(), quantity);
+        BigDecimal capital = BigDecimal.valueOf(CommitmentRules.kobo(request.capital()), 2);
 
         MarketplaceFinancing financing = new MarketplaceFinancing();
-        financing.setId(UUID.randomUUID().toString());
         financing.setUserId(userId);
         financing.setProductId(product.getId());
-        financing.setProductName(product.getName());
         financing.setName(request.name().strip());
-        financing.setQuantity(quantity);
-        financing.setProductTotal(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
+        financing.setProductQuantity(quantity);
         financing.setCapital(capital);
+        financing.setAgreementAccepted(request.agreementAccepted());
         financing.setFulfillment(buildFulfillment(request.fulfillment()));
-        financing.setAgreementVersion(agreementVersion);
         financing.setAgreementAcceptedAt(LocalDateTime.now(ZoneOffset.UTC));
-        return mongoTemplate.insert(financing);
+        return marketplaceFinancingRepository.save(financing);
     }
 
-    public MarketplacePaymentInstructionsResponse getPaymentInstructions(String financingId) {
-        MarketplaceFinancing financing = getUnpaidFinancing(financingId, customerService.getCurrentProfile().userId());
-        getProductWithStock(financing.getProductId(), financing.getQuantity());
-        rateService.getConfiguredPercentage();
+    public PaginatedData getAdminFinancings(
+            MarketplaceFinancingStatus status,
+            String search,
+            int page,
+            int size
+    ) {
+        adminService.getCurrentAdminProfile();
 
-        EcharisAccountDetails account = mongoTemplate.findById(EcharisAccountDetails.ACCOUNT_DETAILS_ID,
-                EcharisAccountDetails.class);
-        if (account == null) {
-            throw new InvalidOperationException("Echaris payment account has not been configured");
+        Query query = new Query();
+
+        if (status != null) {
+            query.addCriteria(Criteria.where("status").is(status));
         }
-        return new MarketplacePaymentInstructionsResponse(financing.getId(), UserPaymentPurpose.MARKETPLACE_FINANCING,
-                financing.getCapital(), account.getBankName(), account.getAccountName(), account.getAccountNumber());
+
+        if (search != null && !search.isBlank()) {
+            String regex = java.util.regex.Pattern.quote(search.strip());
+            query.addCriteria(new Criteria().orOperator(
+                    Criteria.where("name").regex(regex, "i"),
+                    Criteria.where("productName").regex(regex, "i"),
+                    Criteria.where("productId").regex(regex, "i"),
+                    Criteria.where("userId").regex(regex, "i"),
+                    Criteria.where("id").regex(regex, "i")
+            ));
+        }
+
+        return getFinancingPage(query, page, size);
     }
 
-    public MarketplaceFinancing getUnpaidFinancing(String financingId, String userId) {
-        MarketplaceFinancing financing = getCustomerFinancing(financingId, userId);
+    @Transactional
+    public UserPayment adminUpdatesMarketFinancingPaymentStatus(
+            String userPaymentId,
+            UserPaymentStatus userPaymentStatus,
+            String reasonForRejection
+    ) {
+        String adminId = adminService.getCurrentAdminProfile().userId();
+        boolean approved = userPaymentStatus == UserPaymentStatus.APPROVED;
 
-        if (financing.getStatus() != MarketplaceFinancingStatus.AWAITING_PAYMENT) {
-            throw new InvalidOperationException("Marketplace financing is no longer awaiting payment");
+        if (!approved && userPaymentStatus != UserPaymentStatus.REJECTED) {
+            throw new InvalidInputException("Payment status must be APPROVED or REJECTED");
         }
-        return financing;
+
+        UserPayment payment = mongoTemplate.findById(
+                requireText(userPaymentId, "Payment ID"), UserPayment.class
+        );
+        if (payment == null) {
+            throw new ResourceNotFoundException("Payment submission not found");
+        }
+        if (payment.getPurpose() != UserPaymentPurpose.MARKETPLACE_FINANCING
+                || payment.getDirection() != UserPaymentDirection.INCOMING) {
+            throw new InvalidOperationException("Payment must be an incoming marketplace payment");
+        }
+
+        if (!approved) {
+            reasonForRejection = requireText(reasonForRejection, "Rejection reason");
+
+        }
+
+        if (payment.getStatus() == userPaymentStatus) {
+            return payment;
+        }
+        if (payment.getStatus() != UserPaymentStatus.PENDING) {
+            throw new InvalidOperationException("Only pending payments can be reviewed");
+        }
+
+        MarketplaceFinancing financing = getUnpaidFinancing(
+                payment.getTargetId(), payment.getUserId()
+        );
+        if (financing.getFundingPaymentId() != null
+                && !payment.getId().equals(financing.getFundingPaymentId())) {
+            throw new InvalidOperationException("Payment does not belong to this marketplace financing");
+        }
+        if (payment.getAmount() == null || financing.getCapital() == null
+                || payment.getAmount().compareTo(financing.getCapital()) != 0) {
+            throw new InvalidInputException("Payment amount must match the marketplace capital");
+        }
+
+        Instant reviewedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        payment.setStatus(userPaymentStatus);
+        payment.setReviewedByUserId(adminId);
+        payment.setReviewedAt(reviewedAt);
+        payment.setUpdatedAt(LocalDateTime.now());
+        payment.setReasonForRejection(approved ? null : reasonForRejection);
+
+        UserPayment saved = mongoTemplate.save(payment);
+        if (approved) {
+            fundMarketplaceFinancing(financing, saved);
+        }
+        notificationService.sendPaymentDecision(financing, saved);
+        return saved;
     }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public MarketplaceFinancing confirmFinancingPayment(UserPayment payment) {
-        MarketplaceFinancing financing = getUnpaidFinancing(payment.getTargetId(), payment.getUserId());
-
-        if (financing.getCapital().compareTo(payment.getAmount()) != 0) {
-            throw new InvalidOperationException("Verified payment must match the marketplace capital amount");
-        }
-
-        getProductWithStock(financing.getProductId(), financing.getQuantity());
+    private void fundMarketplaceFinancing(MarketplaceFinancing financing, UserPayment payment) {
+        Product product = getProductWithStock(financing.getProductId(), financing.getProductQuantity());
         BigDecimal monthlyRate = rateService.getConfiguredPercentage();
-        stockService.reserveForMarketplace(financing.getProductId(), financing.getQuantity(),
+        stockService.reserveForMarketplace(financing.getProductId(), financing.getProductQuantity(),
                 payment.getReviewedByUserId(), financing.getId());
+
 
         financing.setFundingPaymentId(payment.getId());
         financing.setApprovedAt(LocalDateTime.ofInstant(payment.getReviewedAt(), ZoneOffset.UTC));
         financing.setMonthlyRate(monthlyRate);
         financing.setStatus(MarketplaceFinancingStatus.ACCUMULATING);
         returnService.scheduleReturn(financing, 1);
-        return saveFinancing(financing);
+        saveFinancing(financing);
+    }
+
+    @Transactional
+    public MarketplaceFinancing makePaymentForMarketFinancing(String marketFinancingId, String userPaymentId) {
+        String userId = customerService.getCurrentProfile().userId();
+        MarketplaceFinancing financing = getUnpaidFinancing(marketFinancingId, userId);
+        UserPayment payment = mongoTemplate.findById(userPaymentId, UserPayment.class);
+
+        if (payment == null) {
+            throw new ResourceNotFoundException("Payment submission not found");
+        }
+        if (payment.getPurpose() != UserPaymentPurpose.MARKETPLACE_FINANCING
+                || payment.getDirection() != UserPaymentDirection.INCOMING
+                || !userId.equals(payment.getUserId())
+                || !financing.getId().equals(payment.getTargetId())) {
+            throw new InvalidOperationException("Payment does not belong to this marketplace financing");
+        }
+        if (payment.getStatus() != UserPaymentStatus.PENDING) {
+            throw new InvalidOperationException("Only pending payments can be submitted for review");
+        }
+        if (payment.getAmount() == null || financing.getCapital() == null
+                || payment.getAmount().compareTo(financing.getCapital()) != 0) {
+            throw new InvalidInputException("Payment amount must match the marketplace capital");
+        }
+
+        String currentPaymentId = financing.getFundingPaymentId();
+        if (payment.getId().equals(currentPaymentId)) {
+            return financing;
+        }
+        if (currentPaymentId != null) {
+            UserPayment currentPayment = mongoTemplate.findById(currentPaymentId, UserPayment.class);
+            if (currentPayment == null || currentPayment.getStatus() != UserPaymentStatus.REJECTED) {
+                throw new ResourceExistsException("This marketplace financing already has a payment for review");
+            }
+        }
+
+        getProductWithStock(financing.getProductId(), financing.getProductQuantity());
+
+        Query query = Query.query(Criteria.where("id").is(financing.getId())
+                .and("status").is(MarketplaceFinancingStatus.AWAITING_PAYMENT)
+                .and("fundingPaymentId").is(currentPaymentId));
+        Update update = new Update().set("fundingPaymentId", payment.getId())
+                .set("updatedAt", LocalDateTime.now());
+
+        MarketplaceFinancing saved = mongoTemplate.findAndModify(
+                query, update, FindAndModifyOptions.options().returnNew(true), MarketplaceFinancing.class);
+        if (saved == null) {
+            throw new ResourceExistsException("Marketplace financing payment changed. Reload before trying again");
+        }
+
+        notificationService.sendPaymentAwaitingApproval(saved, payment);
+        return saved;
+    }
+
+    public MarketplaceFinancing getUnpaidFinancing(String financingId, String userId) {
+        MarketplaceFinancing financing = getCustomerFinancing(financingId, userId);
+        if (financing.getStatus() != MarketplaceFinancingStatus.AWAITING_PAYMENT) {
+            throw new InvalidOperationException("Marketplace financing is no longer awaiting payment");
+        }
+        return financing;
+    }
+
+
+
+    public MarketplaceFinancing getFinancingById(String financingId) {
+        return marketplaceFinancingRepository.findById(financingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Marketplace financing not found"));
     }
 
     public MarketplaceFinancing getMyFinancing(String financingId) {
@@ -178,6 +291,7 @@ public class MarketplaceFinancingService {
         return returnService.getReturns(getAdminFinancing(financingId).getId(), page, size);
     }
 
+    @Transactional
     public MarketplaceFinancing updateFulfillment(String financingId, MarketplaceFulfillmentRequest request) {
         MarketplaceFinancing financing = getMyFinancing(financingId);
 
@@ -260,14 +374,6 @@ public class MarketplaceFinancingService {
         return financing;
     }
 
-    private MarketplaceFinancing getFinancingById(String financingId) {
-        MarketplaceFinancing financing = mongoTemplate.findById(financingId, MarketplaceFinancing.class);
-        if (financing == null) {
-            throw new ResourceNotFoundException("Marketplace financing not found");
-        }
-        return financing;
-    }
-
     private MarketplaceFinancing saveFinancing(MarketplaceFinancing financing) {
         financing.setUpdatedAt(LocalDateTime.now());
         return mongoTemplate.save(financing);
@@ -276,6 +382,9 @@ public class MarketplaceFinancingService {
     private Product getProductWithStock(String productId, int quantity) {
         Product product = productService.catalogProduct(productId);
 
+        if (quantity < 1) {
+            throw new InvalidInputException("Marketplace financing quantity must be positive");
+        }
         if (quantity > product.getStockQuantity()) {
             throw new ResourceExistsException("Requested quantity exceeds available stock");
         }

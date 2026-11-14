@@ -12,7 +12,6 @@ import com.echaris.api.marketplace.MarketplaceFinancingService;
 import com.echaris.api.notification.NotificationService;
 import com.echaris.api.payoutaccount.CustomerPayoutAccount;
 import com.echaris.api.payoutaccount.response.CustomerPayoutAccountResponse;
-import com.echaris.api.userPayment.request.UserPaymentApprovalRequest;
 import com.echaris.api.userPayment.request.UserPaymentPayoutRequest;
 import com.echaris.api.userPayment.request.UserPaymentRequest;
 import com.echaris.api.userauthmgt.user.User;
@@ -73,11 +72,6 @@ public class UserPaymentService {
     @PostConstruct
     public void createIndexes() {
         var indexes = mongoTemplate.indexOps(UserPayment.class);
-        indexes.createIndex(new Index()
-                .on("bankCreditId", Sort.Direction.ASC)
-                .unique()
-                .partial(PartialIndexFilter.of(new Document("bankCreditId", new Document("$type", "string"))))
-                .named("uq_user_payment_bank_credit"));
         indexes.createIndex(new Index().on("userId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
         indexes.createIndex(new Index().on("status", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC));
 
@@ -104,14 +98,13 @@ public class UserPaymentService {
         requireSupportedFundingPurpose(request.purpose());
         String targetId = request.targetId().strip();
         BigDecimal amount = BigDecimal.valueOf(CommitmentRules.kobo(request.amount()), 2);
-        String targetName;
+        String targetName = null;
 
         if (request.purpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
             var financing = marketplaceFinancingService.getUnpaidFinancing(targetId, customer.getId());
             if (amount.compareTo(financing.getCapital()) != 0) {
                 throw new InvalidInputException("The submitted amount must match the marketplace capital amount");
             }
-            targetName = financing.getName();
         } else {
             Commitment commitment = commitmentService.get(targetId);
             if (commitment.getStatus() != CommitmentStatus.AWAITING_PAYMENT || commitment.getFundedAt() != null) {
@@ -140,6 +133,11 @@ public class UserPaymentService {
         payment.setTransferReference(reference == null || reference.isBlank() ? null : reference.strip());
 
         UserPayment saved = mongoTemplate.insert(payment);
+        if (saved.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            marketplaceFinancingService.makePaymentForMarketFinancing(saved.getTargetId(), saved.getId());
+            return saved;
+        }
+
         notifyAdminsOfSubmission(saved, customer, targetName);
         notifyCustomer(saved, targetName, "USER_PAYMENT_UNDER_REVIEW", "Payment under review",
                 "We received your %s. An admin will review your receipt."
@@ -280,83 +278,62 @@ public class UserPaymentService {
     }
 
     public UserPayment getAdminPayment(String paymentId) {
-        commitmentService.requireAdmin();
-        return requirePayment(paymentId);
+
+        return findById(paymentId);
     }
 
     @Transactional
-    public UserPayment approve(String paymentId, UserPaymentApprovalRequest request) {
+    public UserPayment approve(String paymentId) {
         User admin = commitmentService.requireAdmin();
-        UserPayment payment = requirePayment(paymentId);
+        UserPayment payment = findById(paymentId);
         requireSupportedFundingPurpose(payment.getPurpose());
-        String bankCreditId = request.bankCreditId().strip();
-        BigDecimal verifiedAmount = BigDecimal.valueOf(CommitmentRules.kobo(request.verifiedAmount()), 2);
-        Instant reviewedAt = Instant.now();
 
-        if (request.paidAt().isAfter(reviewedAt)) {
-            throw new InvalidInputException("Bank credit time cannot be in the future");
+        if (payment.getDirection() != UserPaymentDirection.INCOMING) {
+            throw new InvalidOperationException("Only incoming payments can be approved");
         }
-
-        Instant paidAt = request.paidAt().truncatedTo(ChronoUnit.MILLIS);
-
-        if (verifiedAmount.compareTo(payment.getAmount()) != 0) {
-            throw new InvalidOperationException("The verified bank amount does not match the submitted amount");
+        if (payment.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            return marketplaceFinancingService.adminUpdatesMarketFinancingPaymentStatus(
+                    paymentId, UserPaymentStatus.APPROVED, null);
         }
-        if (payment.getStatus() == UserPaymentStatus.APPROVED
-                && bankCreditId.equals(payment.getBankCreditId())
-                && paidAt.equals(payment.getPaidAt())) {
+        if (payment.getStatus() == UserPaymentStatus.APPROVED) {
             return payment;
         }
 
         requirePending(payment);
-        payment.setStatus(UserPaymentStatus.APPROVED);
-        payment.setBankCreditId(bankCreditId);
-        payment.setPaidAt(paidAt);
-        payment.setReviewedByUserId(admin.getId());
-        payment.setReviewedAt(reviewedAt.truncatedTo(ChronoUnit.MILLIS));
-        payment.setUpdatedAt(LocalDateTime.now());
-
-        UserPayment saved;
-        try {
-            saved = mongoTemplate.save(payment);
-        } catch (DuplicateKeyException exception) {
-            throw new ResourceExistsException("This bank credit has already been applied to a payment");
+        if (payment.getAmount() == null || payment.getAmount().signum() <= 0) {
+            throw new InvalidInputException("A positive payment amount is required");
         }
 
-        String targetName;
-        String fundedMessage;
-        if (saved.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
-            var financing = marketplaceFinancingService.confirmFinancingPayment(saved);
-            targetName = financing.getName();
-            fundedMessage = "Your marketplace financing is now accumulating returns.";
-        } else {
-            commitmentService.confirmManualFunding(
-                    saved.getTargetId(), saved.getUserId(), saved.getAmount(),
-                    saved.getId(), paidAt, admin.getId());
-            targetName = findTargetName(saved);
-            fundedMessage = "Your commitment is now funded.";
-        }
+        Instant reviewedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        recordReview(payment, UserPaymentStatus.APPROVED, admin.getId(), reviewedAt);
+        UserPayment saved = mongoTemplate.save(payment);
+        commitmentService.confirmManualFunding(
+                saved.getTargetId(), saved.getUserId(), saved.getAmount(),
+                saved.getId(), reviewedAt, admin.getId());
 
+        String targetName = findTargetName(saved);
         notifyCustomer(saved, targetName, "USER_PAYMENT_APPROVED", "Payment approved",
-                "Your %s was approved. %s".formatted(paymentDescription(saved, targetName), fundedMessage));
+                "Your %s was approved. Your commitment is now funded."
+                        .formatted(paymentDescription(saved, targetName)));
         return saved;
     }
 
     @Transactional
-    public UserPayment reject(String paymentId) {
+    public UserPayment reject(String paymentId, String reasonForRejection) {
         User admin = commitmentService.requireAdmin();
-        UserPayment payment = requirePayment(paymentId);
+        UserPayment payment = findById(paymentId);
         requireIncomingPayment(payment.getPurpose());
 
+        if (payment.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            return marketplaceFinancingService.adminUpdatesMarketFinancingPaymentStatus(
+                    paymentId, UserPaymentStatus.REJECTED, reasonForRejection);
+        }
         if (payment.getStatus() == UserPaymentStatus.REJECTED) {
             return payment;
         }
 
         requirePending(payment);
-        payment.setStatus(UserPaymentStatus.REJECTED);
-        payment.setReviewedByUserId(admin.getId());
-        payment.setReviewedAt(Instant.now());
-        payment.setUpdatedAt(LocalDateTime.now());
+        recordReview(payment, UserPaymentStatus.REJECTED, admin.getId(), Instant.now());
 
         UserPayment saved = mongoTemplate.save(payment);
         String commitmentName = findTargetName(saved);
@@ -364,6 +341,13 @@ public class UserPaymentService {
                 "Your %s was rejected. Check your payment details before submitting another receipt."
                         .formatted(paymentDescription(saved, commitmentName)));
         return saved;
+    }
+
+    private void recordReview(UserPayment payment, UserPaymentStatus status, String adminId, Instant reviewedAt) {
+        payment.setStatus(status);
+        payment.setReviewedByUserId(adminId);
+        payment.setReviewedAt(reviewedAt.truncatedTo(ChronoUnit.MILLIS));
+        payment.setUpdatedAt(LocalDateTime.now());
     }
 
     private void notifyPayoutCustomer(UserPayment payment, User customer) {
@@ -516,7 +500,7 @@ public class UserPaymentService {
         return user;
     }
 
-    private UserPayment requirePayment(String paymentId) {
+    public UserPayment findById(String paymentId) {
         UserPayment payment = mongoTemplate.findById(paymentId, UserPayment.class);
         if (payment == null) {
             throw new ResourceNotFoundException("Payment submission not found");

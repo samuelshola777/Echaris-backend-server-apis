@@ -122,8 +122,8 @@ public class MarketplaceReturnService {
 
         financing.setAccumulatedReturns(financing.getAccumulatedReturns().add(installment.getAmount()));
         boolean releaseProduct = financing.getReleasedAt() == null
-                && financing.hasReachedReturnPercentage(MarketplaceFinancing.PRODUCT_RELEASE_PERCENT);
-        boolean mature = financing.hasReachedReturnPercentage(MarketplaceFinancing.CAPITAL_PAYOUT_PERCENT);
+               ;
+        boolean mature = true;
 
         if (releaseProduct) {
             financing.setReleasedAt(localConfirmedAt);

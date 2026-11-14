@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.FieldType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -22,5 +23,5 @@ public class MarketplaceRateHistory extends BaseEntity {
     private BigDecimal newPercentage;
 
     private String changedBy;
-    private Instant changedAt;
+    private LocalDateTime changedAt;
 }

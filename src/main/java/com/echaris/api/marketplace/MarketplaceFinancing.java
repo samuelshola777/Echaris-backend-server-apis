@@ -23,27 +23,19 @@ public class MarketplaceFinancing extends BaseEntity {
 
     private String userId;
     private String productId;
-    private String productName;
     private String name;
-    private int quantity;
-
-    @Field(targetType = FieldType.DECIMAL128)
-    private BigDecimal productTotal;
-
+    private int productQuantity;
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal capital;
-
+    boolean agreementAccepted;
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal monthlyRate;
-
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal accumulatedReturns = BigDecimal.ZERO;
-
     private MarketplaceFinancingStatus status = MarketplaceFinancingStatus.AWAITING_PAYMENT;
     private MarketplaceFulfillment fulfillment;
     private MarketplaceFulfillmentStatus fulfillmentStatus = MarketplaceFulfillmentStatus.AWAITING_RELEASE;
     private List<MarketplaceFulfillmentHistory> fulfillmentHistory = new ArrayList<>();
-    private String agreementVersion;
     private LocalDateTime agreementAcceptedAt;
     private String fundingPaymentId;
     private LocalDateTime approvedAt;
@@ -53,13 +45,8 @@ public class MarketplaceFinancing extends BaseEntity {
     private LocalDateTime capitalRequestedAt;
     private String capitalPayoutId;
     private LocalDateTime capitalPaidAt;
+    private boolean completed;
+    private LocalDateTime completedAt;
 
-    @Version
-    private Long version;
 
-    boolean hasReachedReturnPercentage(int percentage) {
-        BigDecimal earned = accumulatedReturns.movePointRight(2);
-        BigDecimal threshold = productTotal.multiply(BigDecimal.valueOf(percentage));
-        return earned.compareTo(threshold) >= 0;
     }
-}

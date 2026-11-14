@@ -39,11 +39,7 @@ public class UserPayment extends BaseEntity {
     private String reviewedByUserId;
     private Instant reviewedAt;
     private Instant paidAt;
+    private String reasonForRejection;
 
-    @JsonIgnore
-    private String bankCreditId;
 
-    @JsonIgnore
-    @Version
-    private Long version;
 }

@@ -1,7 +1,6 @@
 package com.echaris.api.userPayment;
 
 import com.echaris.api.payoutaccount.response.CustomerPayoutAccountResponse;
-import com.echaris.api.userPayment.request.UserPaymentApprovalRequest;
 import com.echaris.api.userPayment.request.UserPaymentPayoutRequest;
 import com.echaris.api.userPayment.request.UserPaymentRequest;
 import com.echaris.api.utils.ApiResponse;
@@ -89,16 +88,5 @@ public class UserPaymentController {
         return new ApiResponse<>(true, "Payment details retrieved", userPaymentService.getAdminPayment(paymentId));
     }
 
-    @PutMapping("/private/admin/{paymentId}/approve")
-    public ApiResponse<UserPayment> approve(
-            @PathVariable String paymentId,
-            @Valid @RequestBody UserPaymentApprovalRequest request
-    ) {
-        return new ApiResponse<>(true, "Payment approved", userPaymentService.approve(paymentId, request));
-    }
 
-    @PutMapping("/private/admin/{paymentId}/reject")
-    public ApiResponse<UserPayment> reject(@PathVariable String paymentId) {
-        return new ApiResponse<>(true, "Payment rejected", userPaymentService.reject(paymentId));
-    }
 }

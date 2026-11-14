@@ -18,7 +18,6 @@ public record MarketplaceFinancingRequest(
         @NotBlank @Size(max = 150) String name,
         @NotNull @DecimalMin("50000") @Digits(integer = 15, fraction = 2) BigDecimal capital,
         @Valid @NotNull MarketplaceFulfillmentRequest fulfillment,
-        @NotBlank @Size(max = 100) String agreementVersion,
         @AssertTrue boolean agreementAccepted
 ) {
 }
