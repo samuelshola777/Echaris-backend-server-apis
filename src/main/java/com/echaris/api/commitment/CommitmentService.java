@@ -179,6 +179,8 @@ public class CommitmentService {
         });
     }
 
+
+
     public Commitment get(String id) {
         return owned(id, customerUser().getId());
     }

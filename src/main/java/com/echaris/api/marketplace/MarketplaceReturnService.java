@@ -13,6 +13,8 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
@@ -35,122 +37,156 @@ public class MarketplaceReturnService {
 
     @PostConstruct
     public void createIndexes() {
-        mongoTemplate.indexOps(MarketplaceReturn.class)
-                .createIndex(new Index().on("financingId", Sort.Direction.ASC).on("monthNumber", Sort.Direction.ASC)
-                        .unique());
+        mongoTemplate.indexOps(MarketplaceReturn.class).createIndex(
+                new Index()
+                        .on("financingId", Sort.Direction.ASC)
+                        .on("monthNumber", Sort.Direction.ASC)
+                        .unique()
+        );
     }
 
-    void scheduleReturn(MarketplaceFinancing financing, int month) {
+    void scheduleReturn(MarketplaceFinancing financing, int monthNumber) {
+        LocalDateTime dueAt = financing.getApprovedAt().toLocalDate().plusMonths(monthNumber).atStartOfDay();
+
         MarketplaceReturn installment = new MarketplaceReturn();
-        installment.setId(financing.getId() + ":" + month);
+        installment.setId(financing.getId() + ":" + monthNumber);
         installment.setFinancingId(financing.getId());
-        installment.setMonthNumber(month);
-        LocalDateTime dueAt = financing.getApprovedAt().toLocalDate().plusMonths(month).atStartOfDay();
+        installment.setMonthNumber(monthNumber);
         installment.setDueAt(dueAt.toInstant(ZoneOffset.UTC));
         installment.setAmount(CommitmentRules.monthlyReturn(financing.getCapital(), financing.getMonthlyRate()));
+
         mongoTemplate.insert(installment);
         financing.setNextReturnAt(dueAt);
+
+        logAfterCommit(() -> log.info(
+                "Scheduled marketplace return: financingId={}, monthNumber={}, dueAt={}",
+                financing.getId(), monthNumber, installment.getDueAt()
+        ));
     }
 
-    @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
+    @Scheduled(cron = "0 45 0 * * *", zone = "Africa/Lagos")
     public void confirmDueReturns() {
         confirmDueReturns(Instant.now());
     }
 
     void confirmDueReturns(Instant cutoff) {
-        LocalDateTime localCutoff = LocalDateTime.ofInstant(cutoff, ZoneOffset.UTC);
-        String afterId = null;
+        LocalDateTime dueBy = LocalDateTime.ofInstant(cutoff, ZoneOffset.UTC);
+        String lastFinancingId = null;
         List<MarketplaceFinancing> batch;
+        long candidates = 0;
 
+        log.info("Checking due marketplace returns: cutoff={}", cutoff);
         do {
-            batch = findDueFinancings(localCutoff, afterId);
+            batch = findFinancingsWithDueReturns(dueBy, lastFinancingId);
+            candidates += batch.size();
+            log.info("Fetched marketplace return candidates: batchSize={}, afterFinancingId={}",
+                    batch.size(), lastFinancingId);
 
             for (MarketplaceFinancing financing : batch) {
-                afterId = financing.getId();
-                confirmFinancingReturns(afterId, localCutoff);
+                lastFinancingId = financing.getId();
+                confirmReturnInTransaction(lastFinancingId, dueBy);
             }
         } while (batch.size() == BATCH_SIZE);
+        log.info("Finished checking marketplace returns: candidates={}", candidates);
     }
 
-    private List<MarketplaceFinancing> findDueFinancings(LocalDateTime cutoff, String afterId) {
-        Criteria due = Criteria.where("status").is(MarketplaceFinancingStatus.ACCUMULATING)
-                .and("nextReturnAt").lte(cutoff);
+    PaginatedData getReturns(String financingId, int page, int size) {
+        Query query = Query.query(Criteria.where("financingId").is(financingId));
+        return paginationService.paginate(
+                query, MarketplaceReturn.class, page, size, "monthNumber", "ASC", Set.of("monthNumber")
+        );
+    }
 
-        if (afterId != null) {
-            due.and("id").gt(afterId);
+    private List<MarketplaceFinancing> findFinancingsWithDueReturns(LocalDateTime dueBy, String lastFinancingId) {
+        Criteria criteria = Criteria.where("status").is(MarketplaceFinancingStatus.ACCUMULATING)
+                .and("nextReturnAt").lte(dueBy);
+
+        if (lastFinancingId != null) {
+            criteria.and("id").gt(lastFinancingId);
         }
 
-        Query query = Query.query(due).with(Sort.by("id")).limit(BATCH_SIZE);
+        Query query = Query.query(criteria).with(Sort.by("id")).limit(BATCH_SIZE);
         query.fields().include("id");
         return mongoTemplate.find(query, MarketplaceFinancing.class);
     }
 
-    private void confirmFinancingReturns(String financingId, LocalDateTime cutoff) {
+    private void confirmReturnInTransaction(String financingId, LocalDateTime dueBy) {
+        log.info("Processing due marketplace return: financingId={}", financingId);
         try {
-            boolean moreDue;
-            do {
-                // Commit each month separately so a failed month can be retried.
-                moreDue = Boolean.TRUE.equals(transactionTemplate.execute(
-                        status -> confirmNextReturn(financingId, cutoff)));
-            } while (moreDue);
+            transactionTemplate.executeWithoutResult(status -> confirmReturnAndMatureFinancing(financingId, dueBy));
         } catch (RuntimeException exception) {
             log.warn("Marketplace return processing failed for financing {}", financingId, exception);
         }
     }
 
-    private boolean confirmNextReturn(String financingId, LocalDateTime cutoff) {
+    private void confirmReturnAndMatureFinancing(String financingId, LocalDateTime dueBy) {
         MarketplaceFinancing financing = mongoTemplate.findById(financingId, MarketplaceFinancing.class);
-        if (financing == null || financing.getStatus() != MarketplaceFinancingStatus.ACCUMULATING
-                || financing.getNextReturnAt() == null || financing.getNextReturnAt().isAfter(cutoff)) {
-            return false;
+        if (financing == null) {
+            log.info("Skipped marketplace return: financingId={}, reason=financing missing", financingId);
+            return;
+        }
+        if (financing.getStatus() != MarketplaceFinancingStatus.ACCUMULATING
+                || financing.getNextReturnAt() == null || financing.getNextReturnAt().isAfter(dueBy)) {
+            log.info("Skipped marketplace return: financingId={}, status={}, nextReturnAtUtc={}, cutoffUtc={}",
+                    financingId, financing.getStatus(), financing.getNextReturnAt(), dueBy);
+            return;
         }
 
-        Query due = Query.query(Criteria.where("financingId").is(financingId)
+        Query query = Query.query(Criteria.where("financingId").is(financingId)
                 .and("status").is(MarketplaceReturnStatus.PENDING)
                 .and("dueAt").is(financing.getNextReturnAt().toInstant(ZoneOffset.UTC)));
-        MarketplaceReturn installment = mongoTemplate.findOne(due, MarketplaceReturn.class);
+        MarketplaceReturn installment = mongoTemplate.findOne(query, MarketplaceReturn.class);
         if (installment == null) {
             throw new IllegalStateException("Scheduled marketplace return is missing");
         }
 
         Instant confirmedAt = Instant.now();
-        LocalDateTime localConfirmedAt = LocalDateTime.ofInstant(confirmedAt, ZoneOffset.UTC);
+        LocalDateTime confirmedAtUtc = LocalDateTime.ofInstant(confirmedAt, ZoneOffset.UTC);
+
         installment.setStatus(MarketplaceReturnStatus.CONFIRMED);
         installment.setConfirmedAt(confirmedAt);
         installment.setUpdatedAt(LocalDateTime.now());
         mongoTemplate.save(installment);
 
-        financing.setAccumulatedReturns(financing.getAccumulatedReturns().add(installment.getAmount()));
-        boolean releaseProduct = financing.getReleasedAt() == null
-               ;
-        boolean mature = true;
-
+        boolean releaseProduct = financing.getReleasedAt() == null;
         if (releaseProduct) {
-            financing.setReleasedAt(localConfirmedAt);
+            financing.setReleasedAt(confirmedAtUtc);
             financing.setFulfillmentStatus(MarketplaceFulfillmentStatus.READY_FOR_FULFILLMENT);
         }
-        if (mature) {
-            financing.setStatus(MarketplaceFinancingStatus.MATURED);
-            financing.setMaturedAt(localConfirmedAt);
-            financing.setNextReturnAt(null);
-        } else {
-            scheduleReturn(financing, installment.getMonthNumber() + 1);
-        }
+
+        financing.setAccumulatedReturns(financing.getAccumulatedReturns().add(installment.getAmount()));
+        financing.setStatus(MarketplaceFinancingStatus.MATURED);
+        financing.setMaturedAt(confirmedAtUtc);
+        financing.setNextReturnAt(null);
         financing.setUpdatedAt(LocalDateTime.now());
         mongoTemplate.save(financing);
 
         if (releaseProduct) {
+            log.info("Requesting marketplace product release notification: financingId={}", financingId);
             notificationService.sendProductRelease(financing);
         }
-        if (mature) {
-            notificationService.sendFinancingMatured(financing);
-        }
-        return financing.getNextReturnAt() != null && !financing.getNextReturnAt().isAfter(cutoff);
+        log.info("Requesting marketplace maturity notification: financingId={}", financingId);
+        notificationService.sendFinancingMatured(financing);
+
+        logAfterCommit(() -> log.info(
+                "Confirmed marketplace return: financingId={}, returnId={}, monthNumber={}, status={}, "
+                        + "fulfillmentStatus={}, productReleasedNow={}, confirmedAt={}",
+                financingId, installment.getId(), installment.getMonthNumber(), financing.getStatus(),
+                financing.getFulfillmentStatus(), releaseProduct, confirmedAt
+        ));
     }
 
-    PaginatedData getReturns(String financingId, int page, int size) {
-        Query filter = Query.query(Criteria.where("financingId").is(financingId));
-        return paginationService.paginate(filter, MarketplaceReturn.class, page, size,
-                "monthNumber", "ASC", Set.of("monthNumber"));
+    private void logAfterCommit(Runnable writeLog) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    writeLog.run();
+                }
+            });
+        } else {
+            writeLog.run();
+        }
     }
 }

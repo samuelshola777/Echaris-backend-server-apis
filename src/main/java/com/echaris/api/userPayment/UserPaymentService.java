@@ -95,32 +95,52 @@ public class UserPaymentService {
     @Transactional
     public UserPayment createUserManualPayment(UserPaymentRequest request) {
         User customer = requireCustomer();
-        requireSupportedFundingPurpose(request.purpose());
+        UserPaymentPurpose purpose = request.purpose();
+        requireSupportedFundingPurpose(purpose);
+
         String targetId = request.targetId().strip();
         BigDecimal amount = BigDecimal.valueOf(CommitmentRules.kobo(request.amount()), 2);
-        String targetName = null;
+        Commitment commitment = null;
 
-        if (request.purpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+        if (purpose == UserPaymentPurpose.MARKETPLACE_FINANCING) {
             var financing = marketplaceFinancingService.getUnpaidFinancing(targetId, customer.getId());
             if (amount.compareTo(financing.getCapital()) != 0) {
                 throw new InvalidInputException("The submitted amount must match the marketplace capital amount");
             }
+            targetId = financing.getId();
         } else {
-            Commitment commitment = commitmentService.get(targetId);
+            commitment = commitmentService.get(targetId);
             if (commitment.getStatus() != CommitmentStatus.AWAITING_PAYMENT || commitment.getFundedAt() != null) {
                 throw new InvalidOperationException("This commitment is not awaiting payment");
             }
             if (amount.compareTo(commitment.getCapital()) != 0) {
                 throw new InvalidInputException("The submitted amount must match the commitment amount");
             }
+
             targetId = commitment.getId();
-            targetName = commitment.getName();
+            String currentPaymentId = commitment.getFundingPaymentId();
+
+            if (currentPaymentId != null) {
+                UserPayment currentPayment = mongoTemplate.findById(currentPaymentId, UserPayment.class);
+                if (currentPayment == null || currentPayment.getStatus() != UserPaymentStatus.REJECTED) {
+                    throw new ResourceExistsException("This commitment already has a funding payment");
+                }
+            } else {
+                Query pendingPayment = Query.query(Criteria.where("purpose").is(UserPaymentPurpose.COMMITMENT)
+                        .and("targetId").is(targetId)
+                        .and("userId").is(customer.getId())
+                        .and("status").is(UserPaymentStatus.PENDING));
+
+                if (mongoTemplate.exists(pendingPayment, UserPayment.class)) {
+                    throw new ResourceExistsException("This commitment already has a payment for review");
+                }
+            }
         }
 
         UserPayment payment = new UserPayment();
         payment.setId(UUID.randomUUID().toString());
         payment.setUserId(customer.getId());
-        payment.setPurpose(request.purpose());
+        payment.setPurpose(purpose);
         payment.setDirection(UserPaymentDirection.INCOMING);
         payment.setTargetId(targetId);
         payment.setAmount(amount);
@@ -133,15 +153,32 @@ public class UserPaymentService {
         payment.setTransferReference(reference == null || reference.isBlank() ? null : reference.strip());
 
         UserPayment saved = mongoTemplate.insert(payment);
-        if (saved.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+        if (commitment == null) {
             marketplaceFinancingService.makePaymentForMarketFinancing(saved.getTargetId(), saved.getId());
             return saved;
         }
 
-        notifyAdminsOfSubmission(saved, customer, targetName);
-        notifyCustomer(saved, targetName, "USER_PAYMENT_UNDER_REVIEW", "Payment under review",
-                "We received your %s. An admin will review your receipt."
-                        .formatted(paymentDescription(saved, targetName)));
+        commitment.setFundingPaymentId(saved.getId());
+        commitment.setUpdatedAt(LocalDateTime.now());
+        mongoTemplate.save(commitment);
+
+        String commitmentName = commitment.getName();
+        String title = "Commitment payment under review";
+        String message = "We received your %s. An admin will review your receipt."
+                .formatted(paymentDescription(saved, commitmentName));
+
+        notifyAdminsOfSubmission(saved, customer, commitmentName);
+        notifyCustomer(saved, commitmentName, "USER_PAYMENT_UNDER_REVIEW", title, message);
+
+        if (customer.getEmailAddress() != null && !customer.getEmailAddress().isBlank()) {
+            emailSenderService.sendTemplateEmailAfterCommit(customer.getEmailAddress(), title,
+                    "commitment-event", Map.of(
+                            "name", customer.getFirstName() == null ? "there" : customer.getFirstName(),
+                            "title", title,
+                            "message", message
+                    ));
+        }
+
         return saved;
     }
 
@@ -587,5 +624,78 @@ public class UserPaymentService {
 
         List<UserPayment> payments = mongoTemplate.find(query, UserPayment.class);
         return utilsService.createPaginatedData(payments, page, size, total);
+    }
+
+    @Transactional
+    public UserPayment adminUpdatePaymentStatus(String userPaymentId, UserPaymentStatus status, String reason) {
+        User admin = commitmentService.requireAdmin();
+
+        if (status != UserPaymentStatus.APPROVED && status != UserPaymentStatus.REJECTED) {
+            throw new InvalidInputException("Payment status must be APPROVED or REJECTED");
+        }
+
+        UserPayment payment = findById(userPaymentId);
+        requireSupportedFundingPurpose(payment.getPurpose());
+        requirePending(payment);
+
+        if (payment.getDirection() != UserPaymentDirection.INCOMING) {
+            throw new InvalidOperationException("Only incoming payments can be reviewed");
+        }
+        if (payment.getAmount() == null || payment.getAmount().signum() <= 0) {
+            throw new InvalidInputException("A positive payment amount is required");
+        }
+
+        boolean approved = status == UserPaymentStatus.APPROVED;
+        if (!approved && (reason == null || reason.isBlank())) {
+            throw new InvalidInputException("Rejection reason is required");
+        }
+        String rejectionReason = approved ? null : reason.strip();
+
+        if (payment.getPurpose() == UserPaymentPurpose.MARKETPLACE_FINANCING) {
+            var financing = marketplaceFinancingService.getCustomerFinancing(
+                    payment.getTargetId(), payment.getUserId());
+
+            if (!payment.getId().equals(financing.getFundingPaymentId())) {
+                throw new InvalidOperationException("Payment does not belong to this marketplace financing");
+            }
+
+            return marketplaceFinancingService.adminUpdatesMarketFinancingPaymentStatus(
+                    financing.getId(), status, rejectionReason);
+        }
+
+        Instant reviewedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        recordReview(payment, status, admin.getId(), reviewedAt);
+        payment.setReasonForRejection(rejectionReason);
+        UserPayment saved = mongoTemplate.save(payment);
+
+        if (approved) {
+            commitmentService.confirmManualFunding(
+                    saved.getTargetId(), saved.getUserId(), saved.getAmount(),
+                    saved.getId(), reviewedAt, admin.getId());
+            return saved;
+        }
+
+        String commitmentName = findTargetName(saved);
+        String title = "Commitment payment rejected";
+        String message = "Your %s was rejected. Reason: %s"
+                .formatted(paymentDescription(saved, commitmentName), rejectionReason);
+
+        userRepository.findById(saved.getUserId())
+                .filter(user -> !user.isDeleted())
+                .ifPresent(user -> {
+                    notificationService.create(user.getId(), "USER_PAYMENT_REJECTED", title, message,
+                            PAYMENT_REFERENCE, saved.getId(), notificationData(saved, commitmentName));
+
+                    if (user.getEmailAddress() != null && !user.getEmailAddress().isBlank()) {
+                        emailSenderService.sendTemplateEmailAfterCommit(user.getEmailAddress(), title,
+                                "commitment-event", Map.of(
+                                        "name", user.getFirstName() == null ? "there" : user.getFirstName(),
+                                        "title", title,
+                                        "message", message
+                                ));
+                    }
+                });
+
+        return saved;
     }
 }

@@ -21,7 +21,7 @@ public class Commitment extends BaseEntity {
     private String customerId;
     private String userId;
     private String name;
-
+    private String fundingPaymentId;
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal capital;
 

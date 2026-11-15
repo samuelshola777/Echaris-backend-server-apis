@@ -141,24 +141,8 @@ public class MarketplaceController {
                 financingService.adminUpdatesMarketFinancingPaymentStatus(financingId, status, reason));
     }
 
-    @GetMapping("/private/admin/get-rate")
-    public ApiResponse<MarketplaceRate> getRate() {
-        return new ApiResponse<>(true, "Marketplace rate retrieved", rateService.getRate());
-    }
 
-    @PutMapping("/private/admin/update-rate")
-    public ApiResponse<MarketplaceRate> updateRate(
-            @Valid @RequestBody MarketplaceRateRequest request
-    ) {
-        return new ApiResponse<>(true, "Marketplace rate saved", rateService.updateRate(request));
-    }
 
-    @GetMapping("/private/admin/get-rate-history")
-    public ApiResponse<PaginatedData> getRateHistory(
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size
-    ) {
-        return new ApiResponse<>(true, "Marketplace rate history retrieved",
-                rateService.getRateHistory(page, size));
-    }
+
+
 }

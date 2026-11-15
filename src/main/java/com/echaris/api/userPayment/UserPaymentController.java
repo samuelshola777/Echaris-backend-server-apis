@@ -8,14 +8,7 @@ import com.echaris.api.utils.PaginatedData;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -86,6 +79,18 @@ public class UserPaymentController {
     public ApiResponse<UserPayment> getAdminPayment(@PathVariable String paymentId) {
         return new ApiResponse<>(true, "Payment details retrieved", userPaymentService.getAdminPayment(paymentId));
     }
+
+    @PutMapping("/private/admin/update-status")
+    public ApiResponse<UserPayment> adminUpdatesMarketFinancingPaymentStatus(
+            @PathVariable("userPaymentId") String userPaymentId,
+            @RequestParam("status") UserPaymentStatus status,
+            @RequestParam(value = "reason", required = false) String reason
+    ) {
+        return new ApiResponse<>(true, "Payment details retrieved", userPaymentService.adminUpdatePaymentStatus(userPaymentId,status,reason));
+
+    }
+
+
 
 
 }

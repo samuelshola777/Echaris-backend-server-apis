@@ -49,4 +49,6 @@ public class MarketplaceFinancing extends BaseEntity {
     private LocalDateTime completedAt;
 
 
+
+
     }
