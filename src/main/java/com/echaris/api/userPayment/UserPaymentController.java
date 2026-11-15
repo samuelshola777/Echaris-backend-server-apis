@@ -80,7 +80,7 @@ public class UserPaymentController {
         return new ApiResponse<>(true, "Payment details retrieved", userPaymentService.getAdminPayment(paymentId));
     }
 
-    @PutMapping("/private/admin/update-status")
+    @PutMapping("/private/admin/{userPaymentId}/update-status")
     public ApiResponse<UserPayment> adminUpdatesMarketFinancingPaymentStatus(
             @PathVariable("userPaymentId") String userPaymentId,
             @RequestParam("status") UserPaymentStatus status,
