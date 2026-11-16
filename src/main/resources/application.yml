@@ -23,10 +23,10 @@ spring:
       uri: ${MONGODB_URI}
 
   mail:
-    host: ${SMTP_HOST:${BREVO_SMTP_HOST}}
-    port: ${SMTP_PORT:${BREVO_SMTP_PORT}}
-    username: ${SMTP_USERNAME:${BREVO_SMTP_USERNAME}}
-    password: ${SMTP_PASSWORD:${BREVO_SMTP_KEY}}
+    host: ${SMTP_HOST:smtp-relay.brevo.com}
+    port: ${SMTP_PORT}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
     protocol: smtp
     default-encoding: UTF-8
     test-connection: false
@@ -35,7 +35,7 @@ spring:
       "[mail.smtp.starttls.enable]": ${SMTP_STARTTLS:true}
       "[mail.smtp.starttls.required]": ${SMTP_STARTTLS:true}
       "[mail.smtp.ssl.enable]": false
-      "[mail.smtp.ssl.trust]": ${properties-mail-smtp-ssl-trust:${SMTP_HOST:${BREVO_SMTP_HOST}}}
+      "[mail.smtp.ssl.checkserveridentity]": true
       "[mail.smtp.connectiontimeout]": 5000
       "[mail.smtp.timeout]": 5000
       "[mail.smtp.writetimeout]": 5000

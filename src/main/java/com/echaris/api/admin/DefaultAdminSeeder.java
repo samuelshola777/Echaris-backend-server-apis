@@ -57,7 +57,7 @@ public class DefaultAdminSeeder {
         }
 
         User user = userService.createAdminUserFromAdminModule(
-                "Road ResQ",
+                "Echari Admin",
                 "Administrator",
                 email.trim().toLowerCase(Locale.ROOT),
                 password,

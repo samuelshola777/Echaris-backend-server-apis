@@ -2,17 +2,32 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Payout sent</title>
+    <style>
+        @media only screen and (max-width:480px) {
+            .ledger-outer { padding:12px 8px !important; }
+            .ledger-content { padding:18px 16px !important; }
+            .ledger-title { font-size:27px !important; }
+        }
+    </style>
 </head>
-<body>
-<h2>Your Echaris payout has been sent</h2>
-<ul>
-    <li>Amount NGN <span th:text="${amount}"></span></li>
-    <li>Payment time (UTC) <span th:text="${paidAt}"></span></li>
-    <li>Transfer reference <span th:text="${transferReference}"></span></li>
-    <li>Destination bank <span th:text="${bankName}"></span></li>
-    <li>Account ending in <span th:text="${accountNumberLast4}"></span></li>
-</ul>
-<p>You can view the payout in your Echaris payment history.</p>
+<body style="margin:0;padding:0;background-color:#fff8f3;color:#29211d;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;">
+<table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#fff8f3" style="width:100%;background-color:#fff8f3;">
+    <tr><td align="center" class="ledger-outer" style="padding:20px 12px;">
+        <!--[if mso]><table role="presentation" width="648" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+        <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:648px;background-color:#ffffff;border:1px solid #e5bda5;">
+            <tr><td class="ledger-content" style="padding:22px 24px 24px;color:#29211d;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;">
+                <p style="margin:0;padding:0 0 12px;border-bottom:1px solid #e5bda5;color:#a63b15;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:1.2;font-weight:bold;">Echaris</p>
+                <p style="margin:12px 0 0;color:#a63b15;font:700 11px/1.4 Arial,Helvetica,sans-serif;letter-spacing:0.65px;text-transform:uppercase;">Customer payout</p>
+                <h2 class="ledger-title" style="margin:4px 0 20px;color:#29211d;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:1.18;font-weight:normal;overflow-wrap:anywhere;">Your Echaris payout has been sent</h2>
+                <table width="100%" cellspacing="0" cellpadding="0" border="0" aria-label="Payment details" style="width:100%;margin:16px 0;background-color:#fff1e7;border:1px solid #e5bda5;"><tr><th scope="row" align="left" style="width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Amount NGN</th><td align="right" style="padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${amount}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Payment time (UTC)</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${paidAt}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Transfer reference</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${transferReference}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Destination bank</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${bankName}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Account ending in</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${accountNumberLast4}"></span></td></tr></table>
+                <p style="margin:0 0 12px;">You can view the payout in your Echaris payment history.</p>
+            </td></tr>
+            <tr><td style="padding:10px 24px;border-top:1px solid #e5bda5;color:#584942;font:12px/1.5 Arial,Helvetica,sans-serif;">The Echaris team</td></tr>
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+</table>
 </body>
 </html>

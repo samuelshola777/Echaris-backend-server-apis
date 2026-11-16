@@ -2,26 +2,34 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>New payment submitted</title>
+    <style>
+        @media only screen and (max-width:480px) {
+            .ledger-outer { padding:12px 8px !important; }
+            .ledger-content { padding:18px 16px !important; }
+            .ledger-title { font-size:27px !important; }
+        }
+    </style>
 </head>
-<body>
-<h2>New Echaris payment submitted</h2>
-<p>Review this payment in the Echaris admin dashboard.</p>
-<ul>
-    <li>Payment ID <span th:text="${paymentId}"></span></li>
-    <li>Customer user ID <span th:text="${customerUserId}"></span></li>
-    <li>Customer email <span th:text="${customerEmail}"></span></li>
-    <li>Purpose <span th:text="${purpose}"></span></li>
-    <li>Commitment ID <span th:text="${targetId}"></span></li>
-    <li>Amount NGN <span th:text="${amount}"></span></li>
-    <li>Bank name <span th:text="${bankName}"></span></li>
-    <li>Account name <span th:text="${accountName}"></span></li>
-    <li>Account number <span th:text="${accountNumber}"></span></li>
-    <li>Transfer reference <span th:text="${transferReference}"></span></li>
-    <li>Status <span th:text="${status}"></span></li>
-    <li>Submitted at <span th:text="${submittedAt}"></span></li>
-</ul>
-<p>Receipt URLs</p>
-<pre style="white-space: pre-wrap;" th:text="${receiptUrls}"></pre>
+<body style="margin:0;padding:0;background-color:#fff8f3;color:#29211d;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;">
+<table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#fff8f3" style="width:100%;background-color:#fff8f3;">
+    <tr><td align="center" class="ledger-outer" style="padding:20px 12px;">
+        <!--[if mso]><table role="presentation" width="648" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+        <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:648px;background-color:#ffffff;border:1px solid #e5bda5;">
+            <tr><td class="ledger-content" style="padding:22px 24px 24px;color:#29211d;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;">
+                <p style="margin:0;padding:0 0 12px;border-bottom:1px solid #e5bda5;color:#a63b15;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:1.2;font-weight:bold;">Echaris</p>
+                <p style="margin:12px 0 0;color:#a63b15;font:700 11px/1.4 Arial,Helvetica,sans-serif;letter-spacing:0.65px;text-transform:uppercase;">Payment review</p>
+                <h2 class="ledger-title" style="margin:4px 0 20px;color:#29211d;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:1.18;font-weight:normal;overflow-wrap:anywhere;">New Echaris payment submitted</h2>
+                <p style="margin:0 0 12px;">Review this payment in the Echaris admin dashboard.</p>
+                <table width="100%" cellspacing="0" cellpadding="0" border="0" aria-label="Payment details" style="width:100%;margin:16px 0;background-color:#fff1e7;border:1px solid #e5bda5;"><tr><th scope="row" align="left" style="width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Payment ID</th><td align="right" style="padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${paymentId}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Customer user ID</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${customerUserId}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Customer email</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${customerEmail}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Purpose</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${purpose}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Commitment ID</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${targetId}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Amount NGN</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${amount}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Bank name</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${bankName}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Account name</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${accountName}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Account number</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${accountNumber}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Transfer reference</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${transferReference}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Status</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${status}"></span></td></tr><tr><th scope="row" align="left" style="border-top:1px solid #e5bda5;width:43%;padding:8px 10px;color:#584942;font-size:13px;font-weight:normal;">Submitted at</th><td align="right" style="border-top:1px solid #e5bda5;padding:8px 10px;color:#a63b15;font-size:13px;font-weight:bold;overflow-wrap:anywhere;word-break:break-word;"><span th:text="${submittedAt}"></span></td></tr></table>
+                <p style="margin:0 0 12px;">Receipt URLs</p>
+                <pre style="margin:0 0 12px;padding:10px;background-color:#fff1e7;border:1px solid #e5bda5;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font:13px/1.5 Arial,Helvetica,sans-serif;" th:text="${receiptUrls}"></pre>
+            </td></tr>
+            <tr><td style="padding:10px 24px;border-top:1px solid #e5bda5;color:#584942;font:12px/1.5 Arial,Helvetica,sans-serif;">The Echaris team</td></tr>
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+</table>
 </body>
 </html>
